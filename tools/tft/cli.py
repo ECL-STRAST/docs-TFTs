@@ -6,7 +6,7 @@ from pathlib import Path
 
 from . import config
 from .catalog import Catalog
-from .entry import THESIS, TYPES
+from .entry import DEGREES, THESIS, TYPES
 from .errors import TftError
 from .ingest import Ingest
 
@@ -85,7 +85,7 @@ def _parser() -> argparse.ArgumentParser:
     add.add_argument("--title", required=True)
     add.add_argument("--author", required=True)
     add.add_argument("--type", default=THESIS, choices=TYPES)
-    add.add_argument("--degree", default="bachelor")
+    add.add_argument("--degree", default=None, choices=DEGREES)
     add.set_defaults(run=_add)
 
     sync = subs.add_parser("sync", help="re-pull and recompile an entry")

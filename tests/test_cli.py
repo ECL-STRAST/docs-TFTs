@@ -93,3 +93,38 @@ def test_sync_reports_no_change(repo, monkeypatch, capsys):
 
     assert cli.main(["sync", "2027-x"]) == 0
     assert "unchanged" in capsys.readouterr().out
+
+
+def test_add_publication_omits_degree_by_default(repo, monkeypatch):
+    seen = {}
+
+    def fake_add(self, project_id, slug, year, title, author, type="thesis", degree=None):
+        seen["degree"] = degree
+        return repo
+
+    monkeypatch.setattr("tft.ingest.Ingest.add", fake_add)
+
+    code = cli.main([
+        "add", "--overleaf", "abc", "--name", "x", "--year", "2027",
+        "--title", "T", "--author", "A", "--type", "publication",
+    ])
+
+    assert code == 0
+    assert seen["degree"] is None
+
+
+def test_add_thesis_without_degree_fails_cleanly(repo, monkeypatch, capsys):
+    from tft.errors import MissingField
+
+    def fake_add(self, project_id, slug, year, title, author, type="thesis", degree=None):
+        raise MissingField("degree is mandatory for thesis")
+
+    monkeypatch.setattr("tft.ingest.Ingest.add", fake_add)
+
+    code = cli.main([
+        "add", "--overleaf", "abc", "--name", "x", "--year", "2027",
+        "--title", "T", "--author", "A",
+    ])
+
+    assert code == 1
+    assert "degree" in capsys.readouterr().err
