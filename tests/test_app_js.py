@@ -51,3 +51,9 @@ def test_app_binds_every_filter_control():
 def test_app_escapes_interpolated_text():
     # Titles and summaries are authored content; they must never be raw HTML.
     assert "escape" in APP_JS.read_text()
+
+
+def test_app_escapes_quotes_in_attributes():
+    # URL in href attribute must escape quotes to prevent attribute injection.
+    source = APP_JS.read_text()
+    assert "&quot;" in source

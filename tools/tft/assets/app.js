@@ -8,7 +8,7 @@ let entries = [];
 function escape(text) {
   const box = document.createElement("div");
   box.textContent = text == null ? "" : String(text);
-  return box.innerHTML;
+  return box.innerHTML.replace(/"/g, "&quot;");
 }
 
 function value(id) {
@@ -58,4 +58,7 @@ fetch("index.json")
       document.getElementById(id).addEventListener("input", render);
     });
     render();
+  })
+  .catch(() => {
+    document.getElementById("count").textContent = "Catalog could not be loaded";
   });
