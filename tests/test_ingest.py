@@ -1,4 +1,6 @@
 # tests/test_ingest.py
+import shutil
+
 import pytest
 import yaml
 
@@ -108,3 +110,23 @@ def test_failed_sync_keeps_the_previous_pdf(repo):
         _ingest(repo, sha="c" * 40, fail=True).sync("2027-nieves-serrano-biomechanics-db")
 
     assert (folder / "thesis.pdf").read_bytes() == b"%PDF-original\n"
+
+
+def test_failed_mirror_keeps_the_pdf_and_yaml(repo):
+    """A mirror failure must not leave folder/entry.yaml disagreeing."""
+    folder = _add(repo, _ingest(repo))
+    (folder / "thesis.pdf").write_bytes(b"%PDF-original\n")
+
+    # Replace the private checkout with a file: _mirror's mkdir then
+    # fails, before either the PDF or entry.yaml can be touched.
+    private = repo.parent / "private"
+    shutil.rmtree(private)
+    private.write_text("blocker")
+
+    with pytest.raises(NotADirectoryError):
+        _ingest(repo, sha="d" * 40).sync("2027-nieves-serrano-biomechanics-db")
+
+    data = yaml.safe_load((folder / "entry.yaml").read_text())
+
+    assert (folder / "thesis.pdf").read_bytes() == b"%PDF-original\n"
+    assert data["overleaf"]["commit"] == SHA

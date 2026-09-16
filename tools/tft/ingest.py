@@ -64,9 +64,12 @@ class Ingest:
 
     def _install(self, entry: Entry, folder: Path, pdf: Path, work: Path, sha, project_id) -> None:
         """Everything that must only happen once the compile has succeeded."""
-        shutil.copyfile(pdf, folder / DOC_NAME[entry.type])
-
+        # Mirror first: it is the likeliest step to fail (missing private
+        # repo, rmtree of the old mirror). Failing here must not leave the
+        # public PDF and entry.yaml disagreeing about which commit built it.
         mirror = self._mirror(entry, work)
+
+        shutil.copyfile(pdf, folder / DOC_NAME[entry.type])
         updated = dataclasses.replace(
             entry,
             overleaf=Overleaf(
