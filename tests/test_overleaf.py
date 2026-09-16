@@ -73,3 +73,36 @@ def test_fetch_scrubs_the_token_from_failures(tmp_path, monkeypatch):
 
     assert TOKEN not in str(caught.value)
     assert "***" in str(caught.value)
+
+
+def test_token_not_stored_in_git_config(tmp_path, remote, monkeypatch):
+    """After clone, .git/config must not contain the token."""
+    monkeypatch.setattr(overleaf, "url", lambda project_id, token: str(remote))
+    monkeypatch.setenv(overleaf.TOKEN_ENV, TOKEN)
+    dest = tmp_path / "work" / "cloned"
+
+    overleaf.fetch("abc123", dest)
+
+    config = (dest / ".git" / "config").read_text()
+    assert TOKEN not in config
+    # Origin is still reachable for future pulls (without credentials).
+    assert "url = https://git.overleaf.com/abc123" in config
+
+
+def test_scrub_fallback_on_empty_stderr(tmp_path, monkeypatch):
+    """When git writes no stderr, str(CalledProcessError) must be scrubbed."""
+    monkeypatch.setenv(overleaf.TOKEN_ENV, TOKEN)
+
+    def stub_run(*args, **kwargs):
+        # Simulate git failure with empty stderr (e.g., permission denied).
+        exc = subprocess.CalledProcessError(1, ["git", "clone", f"https://git:{TOKEN}@git.overleaf.com/xyz"])
+        exc.stderr = ""
+        raise exc
+
+    monkeypatch.setattr(subprocess, "run", stub_run)
+
+    with pytest.raises(OverleafError) as caught:
+        overleaf.fetch("xyz", tmp_path / "dest")
+
+    assert TOKEN not in str(caught.value)
+    assert "***" in str(caught.value)
