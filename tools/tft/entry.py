@@ -61,6 +61,9 @@ def from_dict(slug: str, data: dict) -> Entry:
     # A thesis has a degree; a publication will have a venue instead.
     if kind == THESIS:
         _require(data, ("degree",))
+
+    # Degree enum is unconditional: if present, must be valid.
+    if "degree" in data:
         _one_of(data, "degree", DEGREES)
 
     _check_types(data)

@@ -69,6 +69,13 @@ def test_publication_does_not_require_a_degree():
     assert entry.from_dict("2027-x", data).degree is None
 
 
+def test_publication_with_invalid_degree_is_rejected():
+    data = {k: v for k, v in MINIMAL.items() if k != "type"} | {"type": "publication", "degree": "postdoc"}
+
+    with pytest.raises(BadValue, match="degree"):
+        entry.from_dict("2027-x", data)
+
+
 def test_unknown_field_is_rejected():
     with pytest.raises(UnknownField, match="titel"):
         entry.from_dict("2027-x", MINIMAL | {"titel": "typo"})
