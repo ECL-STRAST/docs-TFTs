@@ -1,0 +1,61 @@
+// Filters the catalog in the browser. No framework, no network beyond
+// index.json, so a copy of this directory works offline.
+
+const CONTROLS = ["q", "year", "degree", "topic", "code", "slides"];
+
+let entries = [];
+
+function escape(text) {
+  const box = document.createElement("div");
+  box.textContent = text == null ? "" : String(text);
+  return box.innerHTML;
+}
+
+function value(id) {
+  const node = document.getElementById(id);
+  return node.type === "checkbox" ? node.checked : node.value.trim().toLowerCase();
+}
+
+function matches(e, f) {
+  if (f.year && String(e.year) !== f.year) return false;
+  if (f.degree && e.degree !== f.degree) return false;
+  if (f.topic && !e.topics.includes(f.topic)) return false;
+  if (f.code && !e.has_code) return false;
+  if (f.slides && !e.has_slides) return false;
+  if (!f.q) return true;
+
+  const haystack = [e.title, e.author, e.summary, e.topics.join(" ")].join(" ").toLowerCase();
+  return haystack.includes(f.q);
+}
+
+function card(e) {
+  const degree = e.degree ? ` &middot; ${escape(e.degree)}` : "";
+  const topics = e.topics.map((t) => `<span>${escape(t)}</span>`).join("");
+
+  return `<li>
+    <a href="${escape(e.url)}">${escape(e.title)}</a>
+    <p class="meta">${escape(e.author)} &middot; ${escape(e.year)}${degree}</p>
+    <p>${escape(e.summary)}</p>
+    <p class="topics">${topics}</p>
+  </li>`;
+}
+
+function render() {
+  const f = {};
+  CONTROLS.forEach((id) => { f[id] = value(id); });
+
+  const shown = entries.filter((e) => matches(e, f));
+  document.getElementById("results").innerHTML = shown.map(card).join("");
+  document.getElementById("count").textContent =
+    `${shown.length} of ${entries.length} entries`;
+}
+
+fetch("index.json")
+  .then((response) => response.json())
+  .then((data) => {
+    entries = data;
+    CONTROLS.forEach((id) => {
+      document.getElementById(id).addEventListener("input", render);
+    });
+    render();
+  });
