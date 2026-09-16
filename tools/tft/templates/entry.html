@@ -22,7 +22,9 @@
 
   <p class="topics">{% for topic in entry.topics %}<span>{{ topic }}</span>{% endfor %}</p>
 
-  <div class="summary">{{ summary }}</div>
+  {# summary.md is repo content, reviewed via git like this template;
+     render its markdown as HTML rather than escaping it. #}
+  <div class="summary">{{ summary|safe }}</div>
 
   <h2>Files</h2>
   <ul>

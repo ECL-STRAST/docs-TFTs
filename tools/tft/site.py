@@ -7,7 +7,6 @@ from pathlib import Path
 
 import markdown
 from jinja2 import Environment, PackageLoader, select_autoescape
-from markupsafe import Markup
 
 from .catalog import Catalog
 from .config import Config
@@ -91,9 +90,8 @@ class Site:
         if entry.slides:
             shutil.copyfile(source / entry.slides, folder / entry.slides)
 
-        # Our own converter output, not user input: safe to mark as raw HTML.
         page = self._jinja.get_template("entry.html").render(
-            entry=entry, doc=doc, summary=Markup(markdown.markdown(entry.summary)),
+            entry=entry, doc=doc, summary=markdown.markdown(entry.summary),
         )
         (folder / "index.html").write_text(page)
 
