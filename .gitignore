@@ -1,0 +1,9 @@
+site/
+.work/
+.env
+tft.toml
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.venv/
+.superpowers/

@@ -1,0 +1,4 @@
+# Copy to tft.toml (gitignored) when the private repo is not the sibling
+# directory ../docs-TFTs-private.
+[paths]
+private = "../docs-TFTs-private"

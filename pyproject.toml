@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tft"
+version = "0.1.0"
+description = "Catalog tooling for the group's theses and publications"
+requires-python = ">=3.11"
+dependencies = ["PyYAML>=6", "Jinja2>=3.1", "markdown>=3.5"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.scripts]
+tft = "tft.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["tools"]
+
+[tool.setuptools.package-data]
+tft = ["templates/*", "assets/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
