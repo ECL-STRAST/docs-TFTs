@@ -9,6 +9,7 @@ from .catalog import Catalog
 from .entry import DEGREES, THESIS, TYPES
 from .errors import TftError
 from .ingest import Ingest
+from .site import SITE, Site
 
 ROOT_MARKER = "pyproject.toml"
 
@@ -60,6 +61,17 @@ def _sync(args) -> int:
     return 0
 
 
+def _build(args) -> int:
+    root = find_root(Path.cwd())
+    cfg = config.load(root)
+    out = Path(args.out) if args.out else root / SITE
+
+    Site(cfg, Catalog(cfg)).build(out)
+    print(f"built {out}")
+
+    return 0
+
+
 def _validate(args) -> int:
     problems = _catalog().problems()
 
@@ -94,5 +106,9 @@ def _parser() -> argparse.ArgumentParser:
 
     validate = subs.add_parser("validate", help="check every entry")
     validate.set_defaults(run=_validate)
+
+    build = subs.add_parser("build", help="render the static site")
+    build.add_argument("--out", default=None, help="output directory (default: site/)")
+    build.set_defaults(run=_build)
 
     return parser
