@@ -1,0 +1,115 @@
+"""Renders the catalog into a static site."""
+
+import json
+import shutil
+from importlib import resources
+from pathlib import Path
+
+import markdown
+from jinja2 import Environment, PackageLoader, select_autoescape
+from markupsafe import Markup
+
+from .catalog import Catalog
+from .config import Config
+from .entry import DOC_NAME, Entry
+
+SITE = "site"
+INDEX_JSON = "index.json"
+ENTRIES = "entries"
+ASSETS = "assets"
+
+SUMMARY_LIMIT = 300
+
+
+def record(entry: Entry) -> dict:
+    """The flat shape the client-side filter works with."""
+    base = f"{ENTRIES}/{entry.slug}"
+
+    return {
+        "slug": entry.slug,
+        "type": entry.type,
+        "title": entry.title,
+        "author": entry.author,
+        "year": entry.year,
+        "degree": entry.degree,
+        "language": entry.language,
+        "topics": list(entry.topics),
+        "supervisors": list(entry.supervisors),
+        "url": f"{base}/",
+        "doc": f"{base}/{DOC_NAME[entry.type]}",
+        "slides": f"{base}/{entry.slides}" if entry.slides else None,
+        "has_code": bool(entry.repos.code),
+        "has_slides": bool(entry.slides),
+        "summary": _teaser(entry.summary),
+    }
+
+
+class Site:
+    def __init__(self, cfg: Config, catalog: Catalog):
+        self._cfg = cfg
+        self._catalog = catalog
+        self._jinja = Environment(
+            loader=PackageLoader("tft", "templates"),
+            autoescape=select_autoescape(["html"]),
+        )
+
+    def build(self, out: Path) -> None:
+        """Render everything. The output directory is rebuilt from scratch."""
+        entries = self._catalog.entries()
+
+        if out.exists():
+            shutil.rmtree(out)
+
+        out.mkdir(parents=True)
+
+        self._write_index(out, entries)
+        self._write_assets(out)
+
+        for entry in entries:
+            self._write_entry(out, entry)
+
+    def _write_index(self, out: Path, entries: list[Entry]) -> None:
+        records = [record(entry) for entry in entries]
+        (out / INDEX_JSON).write_text(json.dumps(records, indent=1, ensure_ascii=False))
+
+        page = self._jinja.get_template("index.html").render(
+            entries=entries,
+            years=sorted({e.year for e in entries}, reverse=True),
+            degrees=sorted({e.degree for e in entries if e.degree}),
+            topics=sorted({t for e in entries for t in e.topics}),
+        )
+        (out / "index.html").write_text(page)
+
+    def _write_entry(self, out: Path, entry: Entry) -> None:
+        folder = out / ENTRIES / entry.slug
+        folder.mkdir(parents=True)
+
+        source = self._catalog.dir_for(entry)
+        doc = DOC_NAME[entry.type]
+        shutil.copyfile(source / doc, folder / doc)
+
+        if entry.slides:
+            shutil.copyfile(source / entry.slides, folder / entry.slides)
+
+        # Our own converter output, not user input: safe to mark as raw HTML.
+        page = self._jinja.get_template("entry.html").render(
+            entry=entry, doc=doc, summary=Markup(markdown.markdown(entry.summary)),
+        )
+        (folder / "index.html").write_text(page)
+
+    def _write_assets(self, out: Path) -> None:
+        """Copied verbatim: assets are not templates and must not be rendered."""
+        source = resources.files("tft") / ASSETS
+        dest = out / ASSETS
+        dest.mkdir()
+
+        for asset in source.iterdir():
+            shutil.copyfile(asset, dest / asset.name)
+
+
+def _teaser(summary: str) -> str:
+    """The summary's first paragraph as plain text, for the index."""
+    first = summary.strip().split("\n\n")[0]
+    plain = first.replace("*", "").replace("`", "").replace("\n", " ").strip()
+
+    return plain if len(plain) <= SUMMARY_LIMIT else plain[:SUMMARY_LIMIT].rstrip() + "..."

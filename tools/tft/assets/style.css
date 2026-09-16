@@ -1,0 +1,32 @@
+:root { --ink: #1a1a1a; --dim: #5a5a5a; --line: #d8d8d8; --bg: #fff; }
+
+body {
+  max-width: 54rem;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+  font: 16px/1.55 system-ui, sans-serif;
+  color: var(--ink);
+  background: var(--bg);
+}
+
+h1 { font-size: 1.6rem; margin-bottom: .2rem; }
+.meta, #count { color: var(--dim); font-size: .9rem; }
+
+#filters { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1.5rem 0 1rem; }
+#filters input[type=search] { flex: 1 1 16rem; }
+#filters input, #filters select { padding: .4rem; border: 1px solid var(--line); }
+
+#results { list-style: none; padding: 0; }
+#results li { border-top: 1px solid var(--line); padding: .9rem 0; }
+#results a { font-weight: 600; text-decoration: none; color: var(--ink); }
+#results a:hover { text-decoration: underline; }
+
+.topics span {
+  display: inline-block;
+  margin: 0 .3rem .3rem 0;
+  padding: .1rem .5rem;
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  font-size: .8rem;
+  color: var(--dim);
+}

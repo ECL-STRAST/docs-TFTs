@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ entry.title }}</title>
+<link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+<p><a href="../../">&larr; All entries</a></p>
+
+<article>
+  <h1>{{ entry.title }}</h1>
+  <p class="meta">
+    {{ entry.author }} &middot; {{ entry.year }} &middot; {{ entry.type }}
+    {%- if entry.degree %} ({{ entry.degree }}){% endif %}
+  </p>
+
+  {% if entry.supervisors %}
+  <p class="meta">Supervised by {{ entry.supervisors|join(", ") }}</p>
+  {% endif %}
+
+  <p class="topics">{% for topic in entry.topics %}<span>{{ topic }}</span>{% endfor %}</p>
+
+  <div class="summary">{{ summary }}</div>
+
+  <h2>Files</h2>
+  <ul>
+    <li><a href="{{ doc }}">Document (PDF)</a></li>
+    {% if entry.slides %}<li><a href="{{ entry.slides }}">Presentation</a></li>{% endif %}
+  </ul>
+
+  {% if entry.repos.code or entry.repos.docs %}
+  <h2>Repositories</h2>
+  <ul>
+    {% for url in entry.repos.code %}<li><a href="{{ url }}">Code: {{ url }}</a></li>{% endfor %}
+    {% if entry.repos.docs %}<li><a href="{{ entry.repos.docs }}">Docs: {{ entry.repos.docs }}</a></li>{% endif %}
+  </ul>
+  {% endif %}
+</article>
+</body>
+</html>

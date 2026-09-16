@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Theses &amp; publications</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header>
+  <h1>Theses &amp; publications</h1>
+  <p>{{ entries|length }} entries from the research group.</p>
+</header>
+
+<form id="filters" aria-label="Filters">
+  <input type="search" id="q" placeholder="Search title, author, summary">
+  <select id="year"><option value="">Any year</option>
+    {% for year in years %}<option>{{ year }}</option>{% endfor %}
+  </select>
+  <select id="degree"><option value="">Any degree</option>
+    {% for degree in degrees %}<option>{{ degree }}</option>{% endfor %}
+  </select>
+  <select id="topic"><option value="">Any topic</option>
+    {% for topic in topics %}<option>{{ topic }}</option>{% endfor %}
+  </select>
+  <label><input type="checkbox" id="code"> Has code</label>
+  <label><input type="checkbox" id="slides"> Has slides</label>
+</form>
+
+<p id="count" role="status"></p>
+<ul id="results"></ul>
+
+<script src="assets/app.js"></script>
+</body>
+</html>
