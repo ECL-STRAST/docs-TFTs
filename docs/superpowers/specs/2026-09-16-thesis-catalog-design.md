@@ -49,7 +49,7 @@ docs-TFTs/                        (public)
 |-- README.md                     what this is + how to add an entry
 |-- content/
 |   |-- theses/
-|   |   `-- 2024-perez-vr-cpr-training/
+|   |   `-- 2027-nieves-serrano-biomechanics-db/
 |   |       |-- entry.yaml        all metadata
 |   |       |-- summary.md        1-2 paragraphs, English
 |   |       |-- thesis.pdf        compiled by the ingest tool
@@ -69,26 +69,34 @@ under `sources/theses/<folder>/`, so no mapping table is needed.
 
 ```yaml
 type: thesis                  # thesis | publication
-title: VR-based CPR training assessment
-author: Maria Perez
-year: 2024
+title: Design and development of a database for the storage and processing of biomechanical data from physiotherapy patients
+author: Silvia Nieves Serrano
+year: 2027
 degree: bachelor              # thesis only: bachelor | master | phd
-supervisors: [R. Garcia Carmona]
-topics: [vr, medical-training]
-language: es                  # language of the document itself
+supervisors: [Rodrigo García Carmona]
+topics: [vr, biomechanics, rehabilitation]
+language: en                  # language of the document itself
 overleaf:
-  project_id: 65f0c1...
+  project_id: 698b41fa174f9aec00db94cb
   commit: a3f19c2             # revision compiled into thesis.pdf
   main: main.tex              # only when root-file detection is ambiguous
-  mirror: https://github.com/ECL-STRAST/docs-TFTs-private/tree/main/...
+  mirror: https://github.com/ECL-STRAST/docs-TFTs-private/tree/main/sources/theses/2027-nieves-serrano-biomechanics-db
 repos:
-  code: [https://github.com/ECL-STRAST/vr-cpr-simulation]
-  docs: https://github.com/ECL-STRAST/vr-cpr-docs
+  code: [https://github.com/ECL-STRAST/libremotion-chloe]
+  docs: https://github.com/ECL-STRAST/libremotion-chloe-docs
 slides: slides.pdf            # omit if none
 ```
 
 `degree` is required when `type` is `thesis`. Publications will add a
 `venue` field under the same rule. Everything else is common to both.
+
+### In-progress entries
+
+`year` is the expected defence year and may be in the future. An entry
+can therefore exist before the work is finished: `tft add` must accept a
+draft PDF, an empty `repos`, and a missing `slides`, and `tft validate`
+must not treat any of those as errors. Only `type`, `title`, `author`,
+`year`, `degree`, `topics` and `language` are mandatory.
 
 ### Clearance by construction
 
