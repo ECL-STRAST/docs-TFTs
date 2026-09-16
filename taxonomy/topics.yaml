@@ -1,0 +1,11 @@
+# The controlled vocabulary for entry topics. Adding a topic is a deliberate
+# act: it is what stops near-duplicate tags such as "byomechanics".
+- biomechanics
+- computer-vision
+- forensics
+- machine-learning
+- medical-training
+- rehabilitation
+- signal-processing
+- software-engineering
+- vr
