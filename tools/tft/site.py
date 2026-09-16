@@ -8,9 +8,11 @@ from pathlib import Path
 import markdown
 from jinja2 import Environment, PackageLoader, select_autoescape
 
+from . import store
 from .catalog import Catalog
 from .config import Config
 from .entry import DOC_NAME, Entry
+from .errors import BadValue
 
 SITE = "site"
 INDEX_JSON = "index.json"
@@ -55,6 +57,7 @@ class Site:
     def build(self, out: Path) -> None:
         """Render everything. The output directory is rebuilt from scratch."""
         entries = self._catalog.entries()
+        self._verify_files(entries)
 
         if out.exists():
             shutil.rmtree(out)
@@ -66,6 +69,19 @@ class Site:
 
         for entry in entries:
             self._write_entry(out, entry)
+
+    def _verify_files(self, entries: list[Entry]) -> None:
+        """Confirm every file a build would copy exists, before out is wiped."""
+        for entry in entries:
+            source = self._catalog.dir_for(entry)
+            self._require(source, DOC_NAME[entry.type], entry.slug)
+
+            if entry.slides:
+                self._require(source, entry.slides, entry.slug)
+
+    def _require(self, source: Path, name: str, slug: str) -> None:
+        if not store.exists(source / name):
+            raise BadValue(f"{slug}: missing {name}")
 
     def _write_index(self, out: Path, entries: list[Entry]) -> None:
         records = [record(entry) for entry in entries]

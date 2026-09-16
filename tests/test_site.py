@@ -5,6 +5,7 @@ import yaml
 
 from tft import config
 from tft.catalog import Catalog
+from tft.errors import BadValue
 from tft.site import Site
 
 MINIMAL = {
@@ -129,3 +130,25 @@ def test_build_replaces_a_previous_run(repo):
     _build(repo)
 
     assert not (out / "stale.html").exists()
+
+
+def test_missing_slides_aborts_before_deleting_output(repo):
+    _entry(repo, "2027-x", FULL)
+    out = _build(repo)
+    (out / "sentinel.html").write_text("kept")
+
+    # The metadata still declares slides, but the file behind it is gone.
+    (repo / "content" / "theses" / "2027-x" / "slides.pdf").unlink()
+
+    with pytest.raises(BadValue, match="2027-x.*slides.pdf"):
+        _build(repo)
+
+    assert (out / "sentinel.html").read_text() == "kept"
+
+
+def test_missing_document_names_the_slug(repo):
+    folder = _entry(repo, "2027-x", MINIMAL)
+    (folder / "thesis.pdf").unlink()
+
+    with pytest.raises(BadValue, match="2027-x"):
+        _build(repo)
