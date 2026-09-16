@@ -128,18 +128,18 @@ def test_schema_error_is_reported_not_raised(repo):
 
 
 def test_broken_yaml_does_not_abort_scan(repo):
-    # Add one entry with broken YAML syntax.
+    # Add one entry with broken YAML syntax, sorts first alphabetically.
     broken_folder = repo / "content" / "theses" / "2027-broken"
     broken_folder.mkdir(parents=True)
     (broken_folder / "entry.yaml").write_text("type: thesis\n  bad: [indent")
     (broken_folder / "summary.md").write_text("Text.\n")
 
-    # Add one sound entry.
-    _add(repo, "2027-sound")
+    # Add one entry sorting after the broken one, with its own problem.
+    _add(repo, "2027-sound", data=MINIMAL | {"topics": ["not-in-vocabulary"]})
 
-    # problems() should complete without raising and report the broken entry.
+    # problems() should complete without raising and collect all issues.
     problems = _catalog(repo).problems()
 
-    # The scan must have continued past the broken entry; sound entry has no
-    # problems so we just verify the broken one was reported.
+    # If the scan aborted at the broken entry, this would fail.
     assert any("2027-broken" in p for p in problems)
+    assert any("2027-sound" in p for p in problems)
