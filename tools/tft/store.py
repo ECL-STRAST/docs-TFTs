@@ -43,6 +43,16 @@ def write_summary(dir: Path, text: str) -> None:
     (dir / SUMMARY_FILE).write_text(text)
 
 
+def exists(path: Path) -> bool:
+    """Whether a file is present in an entry folder."""
+    return path.is_file()
+
+
+def dir_exists(path: Path) -> bool:
+    """Whether an entry folder exists."""
+    return path.is_dir()
+
+
 def dirs(parent: Path) -> list[Path]:
     """Entry folders under parent, sorted by slug."""
     if not parent.is_dir():

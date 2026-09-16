@@ -1,6 +1,5 @@
 """The catalog as a whole: locating, listing, creating and checking entries."""
 
-from functools import cmp_to_key
 from pathlib import Path
 
 import yaml
@@ -8,22 +7,13 @@ import yaml
 from . import store
 from .config import Config
 from .entry import DOC_NAME, Entry, from_dict
-from .errors import MissingField, SchemaError
+from .errors import ConfigError, MissingField, SchemaError
 
 CONTENT = "content"
 TAXONOMY = "taxonomy/topics.yaml"
 COLLECTIONS = {"thesis": "theses", "publication": "publications"}
 
 STUB_SUMMARY = "Replace this line with one or two paragraphs in English.\n"
-
-
-def _cmp_entries(e1: Entry, e2: Entry) -> int:
-    """Compare entries by year descending, then slug descending."""
-    if e1.year != e2.year:
-        return e2.year - e1.year
-    if e1.slug != e2.slug:
-        return -1 if e1.slug > e2.slug else 1
-    return 0
 
 
 class Catalog:
@@ -37,7 +27,7 @@ class Catalog:
         for collection in COLLECTIONS.values():
             found += [store.read(d) for d in store.dirs(self._content(collection))]
 
-        return sorted(found, key=cmp_to_key(_cmp_entries))
+        return sorted(found, key=lambda e: (-e.year, e.slug))
 
     def find(self, slug: str) -> Entry:
         for entry in self.entries():
@@ -53,7 +43,7 @@ class Catalog:
         """Scaffold a new entry folder with stubs for the human to fill in."""
         folder = self._content(COLLECTIONS[type]) / slug
 
-        if folder.exists():
+        if store.dir_exists(folder):
             raise FileExistsError(f"{folder} already exists")
 
         data = {
@@ -91,7 +81,7 @@ class Catalog:
     def _check(self, folder: Path, vocabulary: set[str]) -> list[str]:
         try:
             entry = store.read(folder)
-        except SchemaError as exc:
+        except (SchemaError, ConfigError) as exc:
             return [str(exc)]
 
         found = [
@@ -101,7 +91,7 @@ class Catalog:
         ]
 
         for name in self._required_files(entry):
-            if not (folder / name).is_file():
+            if not store.exists(folder / name):
                 found.append(f"{folder.name}: missing {name}")
 
         return found

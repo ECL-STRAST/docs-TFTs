@@ -44,7 +44,7 @@ def _catalog(repo):
 
 
 def test_entries_sort_newest_first(repo):
-    _add(repo, "2025-old")
+    _add(repo, "2025-old", data=MINIMAL | {"year": 2025})
     _add(repo, "2027-new", data=MINIMAL | {"year": 2027})
     _add(repo, "2025-older", data=MINIMAL | {"year": 2025})
 
@@ -125,3 +125,21 @@ def test_schema_error_is_reported_not_raised(repo):
     _add(repo, "2027-x", data={"type": "thesis"})
 
     assert any("missing field" in p for p in _catalog(repo).problems())
+
+
+def test_broken_yaml_does_not_abort_scan(repo):
+    # Add one entry with broken YAML syntax.
+    broken_folder = repo / "content" / "theses" / "2027-broken"
+    broken_folder.mkdir(parents=True)
+    (broken_folder / "entry.yaml").write_text("type: thesis\n  bad: [indent")
+    (broken_folder / "summary.md").write_text("Text.\n")
+
+    # Add one sound entry.
+    _add(repo, "2027-sound")
+
+    # problems() should complete without raising and report the broken entry.
+    problems = _catalog(repo).problems()
+
+    # The scan must have continued past the broken entry; sound entry has no
+    # problems so we just verify the broken one was reported.
+    assert any("2027-broken" in p for p in problems)
