@@ -5,12 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Theses &amp; publications</title>
 <link rel="stylesheet" href="assets/style.css">
+<link rel="icon" href="assets/ecl-logo.png">
 </head>
 <body>
 <header>
+  <img src="assets/ecl-logo.png" alt="Embodied Computing Lab">
   <h1>Theses &amp; publications</h1>
-  <p>{{ entries|length }} entries from the research group.</p>
 </header>
+<div class="rule"></div>
+<p>{{ entries|length }} entries from the research group.</p>
 
 <form id="filters" aria-label="Filters">
   <input type="search" id="q" placeholder="Search title, author, summary">

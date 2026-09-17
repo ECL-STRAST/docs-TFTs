@@ -250,3 +250,23 @@ def test_a_declared_photo_missing_from_disk_fails_the_build(repo):
 
     with pytest.raises(BadValue, match="2027-x.*photo.jpg"):
         _build(repo)
+
+
+def test_logo_and_favicon_ship_with_the_site(repo):
+    _entry(repo, "2027-x", MINIMAL)
+
+    out = _build(repo)
+
+    assert (out / "assets" / "ecl-logo.png").is_file()
+    assert 'rel="icon"' in (out / "index.html").read_text()
+    assert 'rel="icon"' in (out / "entries" / "2027-x" / "index.html").read_text()
+
+
+def test_stylesheet_defines_the_ecl_palette(repo):
+    _entry(repo, "2027-x", MINIMAL)
+
+    css = (_build(repo) / "assets" / "style.css").read_text()
+
+    for token in ["--ecl-blue: #046ba5", "--ecl-navy: #093d76",
+                  "--ecl-teal: #218880", "--ecl-green: #1a6c46"]:
+        assert token in css

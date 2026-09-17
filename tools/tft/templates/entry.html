@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ entry.title }}</title>
 <link rel="stylesheet" href="../../assets/style.css">
+<link rel="icon" href="../../assets/ecl-logo.png">
 </head>
 <body>
 <p><a href="../../">&larr; All entries</a></p>
@@ -21,7 +22,7 @@
   </p>
 
   {% if entry.score is not none %}
-  <p><span class="score">{{ entry.score }} / 10{% if entry.honours %}
+  <p><span class="score{% if entry.honours %} honours{% endif %}">{{ entry.score }} / 10{% if entry.honours %}
     &middot; Matrícula de Honor{% endif %}</span></p>
   {% endif %}
 

@@ -1,4 +1,12 @@
-:root { --ink: #1a1a1a; --dim: #5a5a5a; --line: #d8d8d8; --bg: #fff; }
+:root {
+  --ink: #1a1a1a; --dim: #5a5a5a; --line: #d8d8d8; --bg: #fff;
+  /* Sampled from the ECL mark. Teal is 4.29:1 on white, below the 4.5
+     AA floor, so it is used in the gradient rule and never for text. */
+  --ecl-blue: #046ba5;
+  --ecl-navy: #093d76;
+  --ecl-teal: #218880;
+  --ecl-green: #1a6c46;
+}
 
 body {
   max-width: 54rem;
@@ -27,6 +35,50 @@ h1 { font-size: 1.6rem; margin-bottom: .2rem; }
   padding: .1rem .5rem;
   border: 1px solid var(--line);
   border-radius: 1rem;
+  font-size: .8rem;
+  color: var(--dim);
+}
+
+/* Header: the mark, the title, and one gradient hairline echoing it. */
+header { display: flex; align-items: center; gap: .75rem; }
+header img { width: 36px; height: 36px; }
+header h1 { margin: 0; }
+
+.rule {
+  height: 3px;
+  margin: .75rem 0 0;
+  background: linear-gradient(90deg, var(--ecl-blue), var(--ecl-teal), var(--ecl-green));
+}
+
+a { color: var(--ecl-blue); }
+#results a { color: var(--ecl-blue); }
+
+.score {
+  display: inline-block;
+  padding: .1rem .5rem;
+  border-radius: .2rem;
+  background: var(--ecl-green);
+  color: #fff;
+  font-size: .8rem;
+}
+
+/* Honours is the thing that separates two theses that both scored 10. */
+.score.honours { background: var(--ecl-navy); }
+
+.portrait {
+  float: right;
+  width: 72px;
+  height: 72px;
+  margin: 0 0 .75rem .75rem;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+/* Keywords are the thesis's own words and are not filterable, so they
+   read flatter than the topic pills, which are. */
+.keywords span {
+  display: inline-block;
+  margin: 0 .4rem .3rem 0;
   font-size: .8rem;
   color: var(--dim);
 }

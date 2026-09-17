@@ -32,7 +32,8 @@ function matches(e, f) {
 function badge(e) {
   if (e.score == null) return "";
   const honours = e.honours ? " &middot; Matrícula de Honor" : "";
-  return `<span class="score">${escape(e.score)} / 10${honours}</span>`;
+  const cls = e.honours ? "score honours" : "score";
+  return `<span class="${cls}">${escape(e.score)} / 10${honours}</span>`;
 }
 
 function card(e) {
