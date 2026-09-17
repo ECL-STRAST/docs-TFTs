@@ -84,11 +84,28 @@ def test_add_builds_the_slug_from_the_name(repo, monkeypatch):
 
 
 def test_sync_reports_no_change(repo, monkeypatch, capsys):
+    from tft.ingest import SyncResult
+
     _entry(repo, "2027-x")
-    monkeypatch.setattr("tft.ingest.Ingest.sync", lambda self, slug: False)
+    monkeypatch.setattr(
+        "tft.ingest.Ingest.sync", lambda self, slug: SyncResult(changed=False),
+    )
 
     assert cli.main(["sync", "2027-x"]) == 0
     assert "unchanged" in capsys.readouterr().out
+
+
+def test_sync_prints_warnings(repo, monkeypatch, capsys):
+    from tft.ingest import SyncResult
+
+    _entry(repo, "2027-x")
+    monkeypatch.setattr(
+        "tft.ingest.Ingest.sync",
+        lambda self, slug: SyncResult(changed=True, warnings=("year is now 2028",)),
+    )
+
+    assert cli.main(["sync", "2027-x"]) == 0
+    assert "year is now 2028" in capsys.readouterr().err
 
 
 def test_add_passes_the_overrides_through(repo, monkeypatch):

@@ -195,17 +195,11 @@ def test_add_leaves_nothing_behind_when_the_compile_fails(repo):
     assert not (repo / "content" / "theses" / "2027-nieves-serrano-biomechanics-db").exists()
 
 
-def test_sync_is_a_no_op_at_the_same_sha(repo):
-    _add(repo, _ingest(repo))
-
-    assert _ingest(repo).sync("2027-nieves-serrano-biomechanics-db") is False
-
-
 def test_sync_refreshes_pdf_and_sha(repo):
     folder = _add(repo, _ingest(repo))
     later = "b" * 40
 
-    assert _ingest(repo, sha=later).sync("2027-nieves-serrano-biomechanics-db") is True
+    assert _ingest(repo, sha=later).sync("2027-nieves-serrano-biomechanics-db").changed is True
 
     data = yaml.safe_load((folder / "entry.yaml").read_text())
     assert data["overleaf"]["commit"] == later
@@ -262,3 +256,69 @@ def test_failed_copy_leaves_no_tmp_residue(repo, monkeypatch):
 
     assert (folder / "thesis.pdf").read_bytes() == b"%PDF-original\n"
     assert not any(folder.glob("*.tmp"))
+
+
+NEXT_SHA = "b7c379a000000000000000000000000000000000"
+
+
+def _synced(repo, folder, **stub):
+    """Re-sync the entry in folder with a moved Overleaf commit."""
+    return _ingest(repo, sha=NEXT_SHA, **stub).sync(folder.name)
+
+
+def test_sync_is_a_noop_when_overleaf_has_not_moved(repo):
+    folder = _add(repo, _ingest(repo))
+
+    assert _ingest(repo).sync(folder.name).changed is False
+
+
+def test_sync_refreshes_the_summary_from_the_abstract(repo):
+    folder = _add(repo, _ingest(repo))
+    (folder / "summary.md").write_text("Hand-written text.\n")
+    moved = ABSTRACT.replace("a \\textbf{database}", "an \\textbf{archive}")
+
+    result = _synced(repo, folder, abstract=moved)
+
+    assert result.changed is True
+    assert "archive" in (folder / "summary.md").read_text()
+
+
+def test_sync_refreshes_keywords(repo):
+    folder = _add(repo, _ingest(repo))
+    moved = ABSTRACT.replace("biomechanics, Databases.", "gait, Kinematics.")
+
+    _synced(repo, folder, abstract=moved)
+    data = yaml.safe_load((folder / "entry.yaml").read_text())
+
+    assert data["keywords"] == ["gait", "kinematics"]
+
+
+def test_sync_preserves_human_owned_fields(repo):
+    folder = _add(repo, _ingest(repo))
+    data = yaml.safe_load((folder / "entry.yaml").read_text())
+    data["topics"] = ["biomechanics"]
+    data["score"] = 10
+    data["honours"] = True
+    data["slides"] = "slides.pdf"
+    (folder / "entry.yaml").write_text(yaml.safe_dump(data, sort_keys=False))
+
+    _synced(repo, folder)
+    after = yaml.safe_load((folder / "entry.yaml").read_text())
+
+    assert after["topics"] == ["biomechanics"]
+    assert after["score"] == 10
+    assert after["honours"] is True
+    assert after["slides"] == "slides.pdf"
+
+
+def test_sync_warns_but_does_not_rename_on_a_year_change(repo):
+    folder = _add(repo, _ingest(repo))
+    moved = MAIN.replace("Junio 2027", "Junio 2028")
+
+    result = _synced(repo, folder, main=moved)
+    data = yaml.safe_load((folder / "entry.yaml").read_text())
+
+    assert data["year"] == 2028
+    assert folder.name == "2027-nieves-serrano-biomechanics-db"
+    assert folder.is_dir()
+    assert any("2028" in w for w in result.warnings)

@@ -28,6 +28,13 @@ class Overrides:
     degree: str | None = None
 
 
+@dataclass(frozen=True)
+class SyncResult:
+    """What a sync did, and anything the human should look at."""
+    changed: bool
+    warnings: tuple[str, ...] = ()
+
+
 class Ingest:
     def __init__(self, cfg: Config, catalog: Catalog, fetch=overleaf.fetch, build=latex.build):
         self._cfg = cfg
@@ -57,25 +64,34 @@ class Ingest:
 
         return folder
 
-    def sync(self, slug: str) -> bool:
-        """Re-pull and recompile. False when Overleaf has not moved."""
+    def sync(self, slug: str) -> SyncResult:
+        """Re-pull, re-extract and recompile. Unchanged when Overleaf has not moved."""
         entry = self._catalog.find(slug)
 
         if entry.overleaf is None:
             raise FileNotFoundError(f"{slug} has no overleaf.project_id to sync")
 
-        work = self._cfg.work / slug
-        sha = self._fetch(entry.overleaf.project_id, work)
+        project_id = entry.overleaf.project_id
+        work = self._cfg.work / project_id
+        sha = self._fetch(project_id, work)
 
         if sha == entry.overleaf.commit:
-            return False
+            return SyncResult(changed=False)
 
+        meta = self._meta(work, Overrides())
         pdf = self._compile(work, entry.overleaf.main)
         folder = self._catalog.dir_for(entry)
 
-        self._install(entry, folder, pdf, work, sha, entry.overleaf.project_id)
+        # summary.md is derived from the abstract, so it is rewritten here.
+        store.write_summary(folder, meta.abstract)
 
-        return True
+        refreshed = dataclasses.replace(
+            entry, title=meta.title, author=meta.author, year=meta.year,
+            degree=meta.degree, keywords=meta.keywords,
+        )
+        self._install(refreshed, folder, pdf, work, sha, project_id)
+
+        return SyncResult(changed=True, warnings=_year_drift(entry.year, meta.year, slug))
 
     def _compile(self, work: Path, main: str | None) -> Path:
         root = work / main if main else latex.find_main(work)
@@ -145,6 +161,14 @@ class Ingest:
 
 # Fields the CLI can supply; the rest must be fixed in the LaTeX itself.
 OVERRIDABLE = ("title", "author", "year", "degree")
+
+
+def _year_drift(was: int, now: int, slug: str) -> tuple[str, ...]:
+    """The slug embeds the year, but renaming would break shared URLs."""
+    if was == now:
+        return ()
+
+    return (f"{slug}: year is now {now}; the folder name still says {was}",)
 
 
 def _remedy(missing: list[str]) -> str:

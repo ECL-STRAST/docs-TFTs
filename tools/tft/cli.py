@@ -57,8 +57,12 @@ def _add(args) -> int:
 
 
 def _sync(args) -> int:
-    changed = _ingest().sync(args.slug)
-    print(f"{args.slug}: {'updated' if changed else 'unchanged'}")
+    result = _ingest().sync(args.slug)
+
+    for warning in result.warnings:
+        print(f"warning: {warning}", file=sys.stderr)
+
+    print(f"{args.slug}: {'updated' if result.changed else 'unchanged'}")
 
     return 0
 

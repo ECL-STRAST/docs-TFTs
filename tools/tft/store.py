@@ -40,13 +40,15 @@ def read(dir: Path) -> Entry:
 
 
 def write(dir: Path, entry: Entry) -> None:
-    """Write entry.yaml. summary.md is hand written and never overwritten."""
+    """Write entry.yaml. summary.md is written separately, by write_summary."""
     dir.mkdir(parents=True, exist_ok=True)
     text = yaml.safe_dump(model.to_dict(entry), sort_keys=False, allow_unicode=True)
     (dir / ENTRY_FILE).write_text(text, encoding="utf-8")
 
 
 def write_summary(dir: Path, text: str) -> None:
+    """Write summary.md. Derived from the thesis abstract and rewritten on
+    every sync, so hand edits do not survive; the diff is the review."""
     dir.mkdir(parents=True, exist_ok=True)
     (dir / SUMMARY_FILE).write_text(text, encoding="utf-8")
 
