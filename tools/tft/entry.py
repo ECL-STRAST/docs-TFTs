@@ -78,6 +78,8 @@ def from_dict(slug: str, data: dict) -> Entry:
     _check_types(data)
     _check_score(data)
     _check_keywords(data)
+    _check_filename(data, "photo")
+    _check_filename(data, "slides")
 
     return Entry(
         slug=slug,
@@ -202,6 +204,20 @@ def _check_keywords(data: dict) -> None:
     for word in keywords:
         if not isinstance(word, str) or not word.strip():
             raise BadValue("keywords must be non-empty strings")
+
+
+def _check_filename(data: dict, name: str) -> None:
+    """A declared file (photo, slides) must be a bare name in the folder."""
+    value = data.get(name)
+
+    if value is None:
+        return
+
+    if not isinstance(value, str) or not value.strip():
+        raise BadValue(f"{name} must be a non-empty string")
+
+    if "/" in value or "\\" in value or ".." in value:
+        raise BadValue(f"{name} must not contain a path separator")
 
 
 def _overleaf(raw: dict | None) -> Overleaf | None:

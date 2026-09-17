@@ -183,3 +183,23 @@ def test_a_zero_score_survives_the_round_trip():
     data = MINIMAL | {"score": 0}
 
     assert entry.to_dict(entry.from_dict("2027-x", data)) == data
+
+
+def test_photo_must_be_a_string():
+    with pytest.raises(BadValue, match="photo"):
+        entry.from_dict("2027-x", MINIMAL | {"photo": 123})
+
+
+def test_photo_must_not_be_blank():
+    with pytest.raises(BadValue, match="photo"):
+        entry.from_dict("2027-x", MINIMAL | {"photo": "  "})
+
+
+def test_photo_must_not_traverse_out_of_the_entry():
+    with pytest.raises(BadValue, match="photo"):
+        entry.from_dict("2027-x", MINIMAL | {"photo": "../../x.jpg"})
+
+
+def test_slides_must_not_traverse_out_of_the_entry():
+    with pytest.raises(BadValue, match="slides"):
+        entry.from_dict("2027-x", MINIMAL | {"slides": "../secret.pdf"})
