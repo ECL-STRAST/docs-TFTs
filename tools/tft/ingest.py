@@ -70,7 +70,16 @@ class Ingest:
         mirror = self._mirror(entry, work)
 
         target = folder / DOC_NAME[entry.type]
-        tmp = shutil.copyfile(pdf, target.with_name(target.name + ".tmp"))
+        tmp = target.with_name(target.name + ".tmp")
+
+        # Remove the partial temp file on a failed copy (disk full,
+        # interrupted): the live PDF must stay untouched either way.
+        try:
+            shutil.copyfile(pdf, tmp)
+        except Exception:
+            tmp.unlink(missing_ok=True)
+            raise
+
         os.replace(tmp, target)
         updated = dataclasses.replace(
             entry,

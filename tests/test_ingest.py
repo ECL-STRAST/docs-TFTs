@@ -157,3 +157,26 @@ def test_failed_mirror_keeps_the_pdf_and_yaml(repo):
 
     assert (folder / "thesis.pdf").read_bytes() == b"%PDF-original\n"
     assert data["overleaf"]["commit"] == SHA
+
+
+def test_failed_copy_leaves_no_tmp_residue(repo, monkeypatch):
+    """A copy failure must not leave the .tmp sibling behind."""
+    folder = _add(repo, _ingest(repo))
+    (folder / "thesis.pdf").write_bytes(b"%PDF-original\n")
+
+    real_copyfile = shutil.copyfile
+
+    def broken_copy(src, dst, *args, **kwargs):
+        # Only the final PDF copy must fail; the source mirror (which also
+        # uses copyfile, via copytree) must proceed normally.
+        if str(dst).endswith(".tmp"):
+            raise OSError("disk full")
+        return real_copyfile(src, dst, *args, **kwargs)
+
+    monkeypatch.setattr(shutil, "copyfile", broken_copy)
+
+    with pytest.raises(OSError):
+        _ingest(repo, sha="e" * 40).sync("2027-nieves-serrano-biomechanics-db")
+
+    assert (folder / "thesis.pdf").read_bytes() == b"%PDF-original\n"
+    assert not any(folder.glob("*.tmp"))
