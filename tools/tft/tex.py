@@ -162,7 +162,7 @@ def _abstract(src: Path) -> tuple[str | None, tuple[str, ...]]:
     if path is None:
         return None, ()
 
-    _, _, after = path.read_text(encoding="utf-8").partition(ABSTRACT_MARKER)
+    _, _, after = path.read_text(encoding="utf-8", errors="ignore").partition(ABSTRACT_MARKER)
     body, marker, tail = after.partition(KEYWORDS_MARKER)
 
     if not marker:

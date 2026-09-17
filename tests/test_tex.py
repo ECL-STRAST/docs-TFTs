@@ -185,3 +185,12 @@ def test_year_comes_from_the_spanish_date_macro(tmp_path):
     src = _tree(tmp_path, **{"main.tex": main})
 
     assert tex.read(src).year == 2031
+
+
+def test_undecodable_bytes_in_abstract_do_not_crash(tmp_path):
+    src = _tree(tmp_path, **{"main.tex": FULL_MAIN})
+    body = b"\\chapter*{Abstract}\nCaf\xe9 con leche, then prose.\n"
+    (src / "chapters").mkdir()
+    (src / "chapters" / "B-abstract.tex").write_bytes(body)
+
+    assert tex.read(src).abstract is not None
