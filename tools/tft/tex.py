@@ -27,6 +27,22 @@ DEGREES = (
 
 TEX_GLOB = "*.tex"
 
+MAIN_FILE = "main.tex"
+ABSTRACT_MARKER = r"\chapter*{Abstract}"
+KEYWORDS_MARKER = r"\textbf{Keywords:}"
+
+# Layout-only commands: they carry no words, so they simply go.
+DROP = re.compile(r"\\(?:vfill|cleardoublepage|phantomsection|noindent)\b")
+# Font switches whose argument IS the prose, so the braces are unwrapped.
+UNWRAP = re.compile(r"\\(?:textbf|textit|emph|texttt|textsc)\s*\{")
+# Anything else, with every brace group it owns: \addcontentsline takes
+# three, and leaving them behind would drop "{chapter}{Abstract}" in the text.
+MACRO = re.compile(r"\\[a-zA-Z]+\*?(?:\[[^\]]*\])?(?:\{[^{}]*\})*")
+SPACES = re.compile(r"[ \t]+")
+BLANKS = re.compile(r"\n{3,}")
+
+YEAR = re.compile(r"(?:19|20)\d{2}")
+
 
 @dataclass(frozen=True)
 class Meta:
@@ -93,3 +109,74 @@ def fold(text: str) -> str:
     decomposed = unicodedata.normalize("NFKD", text)
 
     return "".join(c for c in decomposed if not unicodedata.combining(c)).upper()
+
+
+def detex(text: str) -> str:
+    """LaTeX prose as plain text, paragraph breaks preserved."""
+    text = DROP.sub("", text)
+    text = _unwrap(text)
+    text = MACRO.sub("", text)
+    text = text.replace("{", "").replace("}", "")
+    text = SPACES.sub(" ", text)
+    text = "\n".join(line.strip() for line in text.splitlines())
+
+    return BLANKS.sub("\n\n", text).strip()
+
+
+def read(src: Path) -> Meta:
+    """Everything the source tree declares about itself."""
+    main = (src / MAIN_FILE).read_text(encoding="utf-8", errors="ignore")
+    abstract, keywords = _abstract(src)
+    year = YEAR.search(macro(main, DATE_MACRO) or "")
+
+    return Meta(
+        title=macro(main, TITLE_MACRO),
+        author=macro(main, AUTHOR_MACRO),
+        year=int(year.group()) if year else None,
+        degree=degree(src),
+        abstract=abstract,
+        keywords=keywords,
+    )
+
+
+def _unwrap(text: str) -> str:
+    """Replace \\textbf{x} and friends with x, outermost first.
+
+    Each pass exposes any nested switch to the next, so
+    \\textbf{a \\emph{b}} resolves in two passes without recursion.
+    """
+    while True:
+        match = UNWRAP.search(text)
+
+        if match is None:
+            return text
+
+        inner, end = braced(text, match.end() - 1)
+        text = text[:match.start()] + inner + text[end:]
+
+
+def _abstract(src: Path) -> tuple[str | None, tuple[str, ...]]:
+    """The English abstract and the author's keywords, both de-TeXed."""
+    path = _abstract_file(src)
+
+    if path is None:
+        return None, ()
+
+    _, _, after = path.read_text(encoding="utf-8").partition(ABSTRACT_MARKER)
+    body, marker, tail = after.partition(KEYWORDS_MARKER)
+
+    if not marker:
+        return detex(body), ()
+
+    words = [w.strip().lower() for w in detex(tail).rstrip(".").split(",")]
+
+    return detex(body), tuple(w for w in words if w)
+
+
+def _abstract_file(src: Path) -> Path | None:
+    """Found by scanning, so a renamed chapter file still works."""
+    for path in sorted(src.rglob(TEX_GLOB)):
+        if ABSTRACT_MARKER in path.read_text(encoding="utf-8", errors="ignore"):
+            return path
+
+    return None
