@@ -194,3 +194,18 @@ def test_undecodable_bytes_in_abstract_do_not_crash(tmp_path):
     (src / "chapters" / "B-abstract.tex").write_bytes(body)
 
     assert tex.read(src).abstract is not None
+
+
+def test_read_without_a_main_tex_returns_all_none(tmp_path):
+    # A different template may root itself in another file; read() must
+    # report absence, not crash, so overrides can still rescue it.
+    src = _tree(tmp_path, **{"other-root.tex": "\\documentclass{article}"})
+
+    meta = tex.read(src)
+
+    assert meta.title is None
+    assert meta.author is None
+    assert meta.year is None
+    assert meta.degree is None
+    assert meta.abstract is None
+    assert meta.keywords == ()

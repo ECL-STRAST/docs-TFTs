@@ -142,6 +142,38 @@ def test_add_publication_needs_only_flags(repo):
     assert "degree" not in data
 
 
+def test_add_without_main_tex_succeeds_with_full_overrides(repo):
+    """The spec promises this: a different template, still ingestable."""
+    def fetch(project_id, dest):
+        dest.mkdir(parents=True, exist_ok=True)
+        (dest / "root.tex").write_text(
+            "\\documentclass{article}\\begin{document}x\\end{document}"
+        )
+        (dest / "abstract.tex").write_text(ABSTRACT)
+        return SHA
+
+    def build(src, main, out):
+        out.mkdir(parents=True, exist_ok=True)
+        pdf = out / "main.pdf"
+        pdf.write_bytes(b"%PDF-1.4\n")
+        return pdf
+
+    cfg = config.load(repo)
+    ingest = Ingest(cfg, Catalog(cfg), fetch=fetch, build=build)
+
+    folder = ingest.add(
+        project_id=PROJECT, name="x",
+        overrides=Overrides(title="T", author="A", year=2027, degree="bachelor"),
+    )
+    data = yaml.safe_load((folder / "entry.yaml").read_text())
+
+    assert data["title"] == "T"
+    assert data["author"] == "A"
+    assert data["year"] == 2027
+    assert data["degree"] == "bachelor"
+    assert data["keywords"] == ["biomechanics", "databases"]
+
+
 def test_extraction_failure_leaves_no_entry(repo):
     bare = "\\documentclass{article}\\begin{document}x\\end{document}"
 

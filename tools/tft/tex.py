@@ -125,7 +125,8 @@ def detex(text: str) -> str:
 
 def read(src: Path) -> Meta:
     """Everything the source tree declares about itself."""
-    main = (src / MAIN_FILE).read_text(encoding="utf-8", errors="ignore")
+    path = src / MAIN_FILE
+    main = path.read_text(encoding="utf-8", errors="ignore") if path.is_file() else ""
     abstract, keywords = _abstract(src)
     year = YEAR.search(macro(main, DATE_MACRO) or "")
 
