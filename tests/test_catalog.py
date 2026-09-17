@@ -168,3 +168,16 @@ def test_broken_yaml_does_not_abort_scan(repo):
     # If the scan aborted at the broken entry, this would fail.
     assert any("2027-broken" in p for p in problems)
     assert any("2027-sound" in p for p in problems)
+
+
+def test_declared_photo_must_exist(repo):
+    _add(repo, "2027-x", data=MINIMAL | {"photo": "photo.jpg"})
+
+    assert any("photo.jpg" in p for p in _catalog(repo).problems())
+
+
+def test_present_photo_is_no_problem(repo):
+    folder = _add(repo, "2027-x", data=MINIMAL | {"photo": "photo.jpg"})
+    (folder / "photo.jpg").write_bytes(b"\xff\xd8\xff")
+
+    assert _catalog(repo).problems() == []

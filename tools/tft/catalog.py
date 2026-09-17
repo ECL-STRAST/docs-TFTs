@@ -107,6 +107,9 @@ class Catalog:
         if entry.slides:
             names.append(entry.slides)
 
+        if entry.photo:
+            names.append(entry.photo)
+
         return names
 
     def _content(self, collection: str) -> Path:

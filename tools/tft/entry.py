@@ -14,7 +14,12 @@ DEGREES = ("bachelor", "master", "phd")
 DOC_NAME = {THESIS: "thesis.pdf", PUBLICATION: "paper.pdf"}
 
 MANDATORY = ("type", "title", "author", "year", "topics", "language")
-OPTIONAL = ("degree", "venue", "supervisors", "overleaf", "repos", "slides")
+OPTIONAL = (
+    "degree", "venue", "supervisors", "overleaf", "repos", "slides",
+    "keywords", "score", "honours", "photo",
+)
+
+MAX_SCORE = 10
 
 TEXT_FIELDS = ("title", "author", "language")
 
@@ -48,6 +53,10 @@ class Entry:
     overleaf: Overleaf | None = None
     repos: Repos = field(default_factory=Repos)
     slides: str | None = None
+    keywords: tuple[str, ...] = ()
+    score: float | None = None
+    honours: bool = False
+    photo: str | None = None
     summary: str = ""   # summary.md's body, attached by the store
 
 
@@ -67,6 +76,8 @@ def from_dict(slug: str, data: dict) -> Entry:
         _one_of(data, "degree", DEGREES)
 
     _check_types(data)
+    _check_score(data)
+    _check_keywords(data)
 
     return Entry(
         slug=slug,
@@ -82,6 +93,10 @@ def from_dict(slug: str, data: dict) -> Entry:
         overleaf=_overleaf(data.get("overleaf")),
         repos=_repos(data.get("repos")),
         slides=data.get("slides"),
+        keywords=tuple(data.get("keywords", ())),
+        score=data.get("score"),
+        honours=bool(data.get("honours", False)),
+        photo=data.get("photo"),
     )
 
 
@@ -112,6 +127,14 @@ def to_dict(entry: Entry) -> dict:
     repos = _put_all(code=list(entry.repos.code), docs=entry.repos.docs)
     _put(out, "repos", repos)
     _put(out, "slides", entry.slides)
+
+    # 0 is a real score, so _put's truthiness test would lose it.
+    if entry.score is not None:
+        out["score"] = entry.score
+
+    _put(out, "honours", entry.honours)
+    _put(out, "keywords", list(entry.keywords))
+    _put(out, "photo", entry.photo)
 
     return out
 
@@ -149,6 +172,36 @@ def _check_types(data: dict) -> None:
 
     if not isinstance(topics, list) or not topics:
         raise BadValue("topics must be a non-empty list")
+
+
+def _check_score(data: dict) -> None:
+    score = data.get("score")
+
+    if score is not None:
+        # bool is an int subclass; honours must not sneak in as a score.
+        if isinstance(score, bool) or not isinstance(score, (int, float)):
+            raise BadValue("score must be a number")
+
+        if not 0 <= score <= MAX_SCORE:
+            raise BadValue(f"score must be between 0 and {MAX_SCORE}, got {score}")
+
+    # An honours mark qualifies a score; alone it says nothing.
+    if data.get("honours") and score is None:
+        raise BadValue("honours needs a score")
+
+
+def _check_keywords(data: dict) -> None:
+    if "keywords" not in data:
+        return
+
+    keywords = data["keywords"]
+
+    if not isinstance(keywords, list) or not keywords:
+        raise BadValue("keywords must be a non-empty list")
+
+    for word in keywords:
+        if not isinstance(word, str) or not word.strip():
+            raise BadValue("keywords must be non-empty strings")
 
 
 def _overleaf(raw: dict | None) -> Overleaf | None:
