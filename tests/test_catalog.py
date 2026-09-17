@@ -121,6 +121,31 @@ def test_declared_slides_must_exist(repo):
     assert any("slides.pdf" in p for p in _catalog(repo).problems())
 
 
+def test_malformed_repo_url_is_a_problem(repo):
+    _add(repo, "2027-x", data=MINIMAL | {"repos": {"code": ["not-a-url"]}})
+
+    problems = _catalog(repo).problems()
+
+    assert any("2027-x" in p and "not-a-url" in p for p in problems)
+
+
+def test_wellformed_repo_url_is_not_a_problem(repo):
+    _add(repo, "2027-x", data=MINIMAL | {
+        "repos": {
+            "code": ["https://github.com/ECL-STRAST/example"],
+            "docs": "https://github.com/ECL-STRAST/example-docs",
+        },
+    })
+
+    assert _catalog(repo).problems() == []
+
+
+def test_entry_without_repos_is_not_a_problem(repo):
+    _add(repo, "2027-x")
+
+    assert _catalog(repo).problems() == []
+
+
 def test_schema_error_is_reported_not_raised(repo):
     _add(repo, "2027-x", data={"type": "thesis"})
 

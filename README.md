@@ -36,6 +36,10 @@ Finally:
 
     tft validate
 
+`validate` checks schema, topics, referenced files, and repo URL syntax.
+It never checks that a URL is reachable: CI holds no secrets and reaches
+nothing, and group repos may be private.
+
 Entries may be added before the work is defended: a draft PDF, no attached
 repositories and no slides are all valid.
 

@@ -37,7 +37,7 @@ def build(src: Path, main: Path, out: Path) -> Path:
     except FileNotFoundError:
         raise CompileError(f"{LATEXMK} is not installed") from None
     except subprocess.CalledProcessError as exc:
-        (out / LOG_NAME).write_text((exc.output or "") + (exc.stderr or ""))
+        (out / LOG_NAME).write_text((exc.output or "") + (exc.stderr or ""), encoding="utf-8")
         raise CompileError(f"{main.name} failed to compile; see {out / LOG_NAME}") from None
 
     return out / f"{main.stem}.pdf"

@@ -13,12 +13,20 @@ ENTRY_FILE = "entry.yaml"
 SUMMARY_FILE = "summary.md"
 
 
+def read_list(path: Path) -> list:
+    """Parse a YAML file expected to hold a list, e.g. the topic vocabulary."""
+    try:
+        return yaml.safe_load(path.read_text(encoding="utf-8")) or []
+    except yaml.YAMLError as exc:
+        raise ConfigError(f"{path}: {exc}") from exc
+
+
 def read(dir: Path) -> Entry:
     """Load one entry folder. The directory name is the slug."""
     path = dir / ENTRY_FILE
 
     try:
-        data = yaml.safe_load(path.read_text()) or {}
+        data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     except yaml.YAMLError as exc:
         raise ConfigError(f"{path}: {exc}") from exc
 
@@ -35,12 +43,12 @@ def write(dir: Path, entry: Entry) -> None:
     """Write entry.yaml. summary.md is hand written and never overwritten."""
     dir.mkdir(parents=True, exist_ok=True)
     text = yaml.safe_dump(model.to_dict(entry), sort_keys=False, allow_unicode=True)
-    (dir / ENTRY_FILE).write_text(text)
+    (dir / ENTRY_FILE).write_text(text, encoding="utf-8")
 
 
 def write_summary(dir: Path, text: str) -> None:
     dir.mkdir(parents=True, exist_ok=True)
-    (dir / SUMMARY_FILE).write_text(text)
+    (dir / SUMMARY_FILE).write_text(text, encoding="utf-8")
 
 
 def exists(path: Path) -> bool:
@@ -64,4 +72,4 @@ def dirs(parent: Path) -> list[Path]:
 def _summary(dir: Path) -> str:
     path = dir / SUMMARY_FILE
 
-    return path.read_text() if path.is_file() else ""
+    return path.read_text(encoding="utf-8") if path.is_file() else ""

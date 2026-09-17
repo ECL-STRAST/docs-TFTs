@@ -1,8 +1,7 @@
 """The catalog as a whole: locating, listing, creating and checking entries."""
 
 from pathlib import Path
-
-import yaml
+from urllib.parse import urlparse
 
 from . import store
 from .config import Config
@@ -12,6 +11,7 @@ from .errors import ConfigError, MissingField, SchemaError
 CONTENT = "content"
 TAXONOMY = "taxonomy/topics.yaml"
 COLLECTIONS = {"thesis": "theses", "publication": "publications"}
+HTTPS = "https"
 
 STUB_SUMMARY = "Replace this line with one or two paragraphs in English.\n"
 
@@ -65,7 +65,7 @@ class Catalog:
     def topics(self) -> set[str]:
         path = self._cfg.root / TAXONOMY
 
-        return set(yaml.safe_load(path.read_text()) or [])
+        return set(store.read_list(path))
 
     def problems(self) -> list[str]:
         """Every reason the catalog would not publish cleanly."""
@@ -94,6 +94,10 @@ class Catalog:
             if not store.exists(folder / name):
                 found.append(f"{folder.name}: missing {name}")
 
+        for url in (*entry.repos.code, entry.repos.docs):
+            if url and not _is_https_url(url):
+                found.append(f"{folder.name}: malformed repo URL: {url}")
+
         return found
 
     def _required_files(self, entry: Entry) -> list[str]:
@@ -107,3 +111,10 @@ class Catalog:
 
     def _content(self, collection: str) -> Path:
         return self._cfg.root / CONTENT / collection
+
+
+def _is_https_url(value: str) -> bool:
+    """Well-formed absolute https:// URL. Syntax only, never reachability."""
+    parsed = urlparse(value)
+
+    return parsed.scheme == HTTPS and bool(parsed.netloc)
