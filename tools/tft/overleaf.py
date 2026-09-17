@@ -61,7 +61,13 @@ def _run(args: list[str], secret: str, cwd: Path) -> str:
     env = _build_git_env()
 
     try:
-        done = subprocess.run(args, cwd=cwd, env=env, capture_output=True, text=True, check=True)
+        # errors="replace": git's stderr isn't guaranteed valid UTF-8;
+        # undecodable bytes must not crash the subprocess call itself,
+        # only the CalledProcessError path below.
+        done = subprocess.run(
+            args, cwd=cwd, env=env, capture_output=True,
+            encoding="utf-8", errors="replace", check=True,
+        )
     except subprocess.CalledProcessError as exc:
         # Omit the chain: git's stderr and str(CalledProcessError) can carry
         # remote URLs and other diagnostic detail. Only the scrubbed message

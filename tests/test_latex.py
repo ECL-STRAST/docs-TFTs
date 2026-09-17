@@ -75,6 +75,27 @@ def _fake_failure(output):
     return subprocess.CalledProcessError(1, "latexmk", output=output, stderr="")
 
 
+def test_build_survives_undecodable_output(tmp_path, monkeypatch):
+    """latexmk output that isn't valid UTF-8 (font/encoding messages are
+    common offenders) must not crash subprocess.run; the normal
+    CalledProcessError path should still run and write the log."""
+    src = tmp_path / "src"
+    src.mkdir()
+    out = tmp_path / "out"
+
+    # Stand-in for latexmk: writes an invalid UTF-8 byte (0xe1, the byte
+    # from the real failure this fixes) to stderr and exits non-zero.
+    fake = tmp_path / "fake-latexmk"
+    fake.write_text("#!/bin/sh\nprintf 'bad byte: \\341 end\\n' >&2\nexit 1\n")
+    fake.chmod(0o755)
+    monkeypatch.setattr(latex, "LATEXMK", str(fake))
+
+    with pytest.raises(CompileError, match="failed to compile"):
+        latex.build(src, src / "main.tex", out)
+
+    assert (out / latex.LOG_NAME).is_file()
+
+
 @pytest.mark.skipif(shutil.which("latexmk") is None, reason="latexmk not installed")
 def test_build_produces_a_pdf(tmp_path):
     src = tmp_path / "src"

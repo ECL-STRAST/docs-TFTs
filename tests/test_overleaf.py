@@ -1,3 +1,4 @@
+import os
 import subprocess
 
 import pytest
@@ -93,6 +94,28 @@ def test_scrub_fallback_on_empty_stderr(tmp_path, monkeypatch):
 
     with pytest.raises(OverleafError) as caught:
         overleaf.fetch("xyz", tmp_path / "dest")
+
+    assert TOKEN not in str(caught.value)
+    assert "***" in str(caught.value)
+
+
+def test_fetch_survives_undecodable_stderr(tmp_path, monkeypatch):
+    """git stderr that isn't valid UTF-8 must not crash subprocess.run;
+    the normal CalledProcessError path should still run and scrub the
+    token from the message."""
+    monkeypatch.setenv(overleaf.TOKEN_ENV, TOKEN)
+
+    # A fake "git" on PATH: writes the token plus an invalid UTF-8 byte
+    # (0xe1) to stderr and exits non-zero. No real git or network involved.
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    fake_git = bin_dir / "git"
+    fake_git.write_text(f"#!/bin/sh\nprintf 'token {TOKEN} bad byte \\341 end\\n' >&2\nexit 1\n")
+    fake_git.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{bin_dir}:{os.environ['PATH']}")
+
+    with pytest.raises(OverleafError) as caught:
+        overleaf.fetch("abc123", tmp_path / "dest")
 
     assert TOKEN not in str(caught.value)
     assert "***" in str(caught.value)

@@ -36,7 +36,13 @@ def build(src: Path, main: Path, out: Path) -> Path:
     ]
 
     try:
-        subprocess.run(args, cwd=src, capture_output=True, text=True, check=True)
+        # errors="replace": latexmk output isn't guaranteed valid UTF-8
+        # (font/encoding messages); undecodable bytes must not crash the
+        # subprocess call itself, only the CalledProcessError path below.
+        subprocess.run(
+            args, cwd=src, capture_output=True,
+            encoding="utf-8", errors="replace", check=True,
+        )
     except FileNotFoundError:
         raise CompileError(f"{LATEXMK} is not installed") from None
     except subprocess.CalledProcessError as exc:
