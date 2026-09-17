@@ -3,14 +3,29 @@
 import dataclasses
 import os
 import shutil
+from dataclasses import dataclass
 from pathlib import Path
 
-from . import latex, overleaf
+from . import latex, overleaf, store, tex
 from .catalog import COLLECTIONS, Catalog
 from .config import Config
 from .entry import DOC_NAME, THESIS, Entry, Overleaf
+from .errors import ExtractError
 
 SOURCES = "sources"
+
+# Everything an entry cannot be created without. Each may instead be
+# supplied by hand when a thesis does not follow the group's template.
+REQUIRED = ("title", "author", "year", "degree", "abstract", "keywords")
+
+
+@dataclass(frozen=True)
+class Overrides:
+    """What the human supplies when the source does not declare it."""
+    title: str | None = None
+    author: str | None = None
+    year: int | None = None
+    degree: str | None = None
 
 
 class Ingest:
@@ -20,16 +35,21 @@ class Ingest:
         self._fetch = fetch
         self._build = build
 
-    def add(self, project_id, slug, year, title, author, type=THESIS, degree=None) -> Path:
+    def add(self, project_id, name, overrides=Overrides(), type=THESIS) -> Path:
         """Create a new entry from an Overleaf project."""
-        work = self._cfg.work / slug
+        work = self._cfg.work / project_id
         sha = self._fetch(project_id, work)
 
-        # Compile before scaffolding, so a broken project leaves no half entry.
+        # Read metadata before compiling: a missing field costs seconds,
+        # a LaTeX run costs a minute.
+        meta = self._meta(work, overrides)
         pdf = self._compile(work, main=None)
 
+        slug = f"{meta.year}-{name}"
         folder = self._catalog.create(
-            slug=slug, type=type, year=year, title=title, author=author, degree=degree,
+            slug=slug, type=type, year=meta.year, title=meta.title,
+            author=meta.author, degree=meta.degree, keywords=meta.keywords,
+            summary=meta.abstract,
         )
         entry = self._catalog.find(slug)
 
@@ -61,6 +81,22 @@ class Ingest:
         root = work / main if main else latex.find_main(work)
 
         return self._build(work, root, self._cfg.work / "out")
+
+    def _meta(self, work: Path, overrides: Overrides) -> tex.Meta:
+        """Source metadata with the human's overrides laid on top."""
+        found = tex.read(work)
+        supplied = {
+            name: value
+            for name, value in dataclasses.asdict(overrides).items()
+            if value is not None
+        }
+        meta = dataclasses.replace(found, **supplied)
+        missing = [name for name in REQUIRED if not getattr(meta, name)]
+
+        if missing:
+            raise ExtractError(f"could not read {', '.join(missing)}; {_remedy(missing)}")
+
+        return meta
 
     def _install(self, entry: Entry, folder: Path, pdf: Path, work: Path, sha, project_id) -> None:
         """Everything that must only happen once the compile has succeeded."""
@@ -105,3 +141,17 @@ class Ingest:
         shutil.copytree(work, dest, ignore=shutil.ignore_patterns(".git"))
 
         return f"{self._cfg.mirror_base}/{collection}/{entry.slug}"
+
+
+# Fields the CLI can supply; the rest must be fixed in the LaTeX itself.
+OVERRIDABLE = ("title", "author", "year", "degree")
+
+
+def _remedy(missing: list[str]) -> str:
+    """What the human can do about each field that could not be read."""
+    flags = [f"--{name}" for name in missing if name in OVERRIDABLE]
+
+    if not flags:
+        return "fix the thesis source"
+
+    return f"pass {' '.join(flags)}"

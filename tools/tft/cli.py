@@ -8,7 +8,7 @@ from . import config
 from .catalog import Catalog
 from .entry import DEGREES, THESIS, TYPES
 from .errors import TftError
-from .ingest import Ingest
+from .ingest import Ingest, Overrides
 from .site import SITE, Site
 
 ROOT_MARKER = "pyproject.toml"
@@ -44,12 +44,14 @@ def _ingest() -> Ingest:
 
 
 def _add(args) -> int:
-    slug = f"{args.year}-{args.name}"
-    folder = _ingest().add(
-        project_id=args.overleaf, slug=slug, year=args.year,
-        title=args.title, author=args.author, type=args.type, degree=args.degree,
+    overrides = Overrides(
+        title=args.title, author=args.author, year=args.year, degree=args.degree,
     )
-    print(f"created {folder}; now fill in summary.md and topics")
+    folder = _ingest().add(
+        project_id=args.overleaf, name=args.name,
+        overrides=overrides, type=args.type,
+    )
+    print(f"created {folder}; now replace the CHANGE-ME topic")
 
     return 0
 
@@ -93,11 +95,12 @@ def _parser() -> argparse.ArgumentParser:
     add = subs.add_parser("add", help="add an entry from an Overleaf project")
     add.add_argument("--overleaf", required=True, metavar="ID", help="Overleaf project id")
     add.add_argument("--name", required=True, help="slug without the year, e.g. surname-topic")
-    add.add_argument("--year", required=True, type=int, help="expected defence year")
-    add.add_argument("--title", required=True)
-    add.add_argument("--author", required=True)
+    add.add_argument("--title", default=None, help="override the extracted title")
+    add.add_argument("--author", default=None, help="override the extracted author")
+    add.add_argument("--year", default=None, type=int, help="override the extracted year")
+    add.add_argument("--degree", default=None, choices=DEGREES,
+                     help="override the extracted degree")
     add.add_argument("--type", default=THESIS, choices=TYPES)
-    add.add_argument("--degree", default=None, choices=DEGREES)
     add.set_defaults(run=_add)
 
     sync = subs.add_parser("sync", help="re-pull and recompile an entry")

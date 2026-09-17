@@ -5,8 +5,8 @@ import yaml
 
 from tft import config
 from tft.catalog import Catalog
-from tft.errors import CompileError
-from tft.ingest import Ingest
+from tft.errors import CompileError, ExtractError
+from tft.ingest import Ingest, Overrides
 
 PROJECT = "698b41fa174f9aec00db94cb"
 SHA = "a3f19c2000000000000000000000000000000000"
@@ -23,12 +23,35 @@ def repo(tmp_path):
     return tmp_path / "public"
 
 
-def _ingest(repo, sha=SHA, fail=False):
+MAIN = r"""
+\newcommand{\authorname}{Silvia Nieves Serrano}
+\newcommand{\tfgtitle}{A database for biomechanical data}
+\newcommand{\fecha}{Junio 2027}
+TRABAJO FIN DE GRADO
+\documentclass{article}
+\begin{document}x\end{document}
+"""
+
+ABSTRACT = r"""
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+This thesis presents a \textbf{database} for biomechanical data.
+
+\vfill
+\textbf{Keywords:} biomechanics, Databases.
+"""
+
+
+def _ingest(repo, sha=SHA, fail=False, main=MAIN, abstract=ABSTRACT):
     """An Ingest whose drivers are stubbed: no network, no TeX."""
     def fetch(project_id, dest):
         dest.mkdir(parents=True, exist_ok=True)
-        (dest / "main.tex").write_text("\\documentclass{article}\n\\begin{document}x\\end{document}\n")
+        (dest / "main.tex").write_text(main)
         (dest / "figure.png").write_bytes(b"png")
+
+        if abstract is not None:
+            (dest / "abstract.tex").write_text(abstract)
+
         return sha
 
     def build(src, main, out):
@@ -45,11 +68,70 @@ def _ingest(repo, sha=SHA, fail=False):
 
 
 def _add(repo, ingest):
-    return ingest.add(
-        project_id=PROJECT, slug="2027-nieves-serrano-biomechanics-db", year=2027,
-        title="A database for biomechanical data", author="Silvia Nieves Serrano",
-        degree="bachelor",
+    return ingest.add(project_id=PROJECT, name="nieves-serrano-biomechanics-db")
+
+
+def test_add_derives_the_slug_from_the_extracted_year(repo):
+    folder = _add(repo, _ingest(repo))
+
+    assert folder.name == "2027-nieves-serrano-biomechanics-db"
+
+
+def test_add_fills_entry_yaml_from_the_source(repo):
+    folder = _add(repo, _ingest(repo))
+    data = yaml.safe_load((folder / "entry.yaml").read_text())
+
+    assert data["title"] == "A database for biomechanical data"
+    assert data["author"] == "Silvia Nieves Serrano"
+    assert data["year"] == 2027
+    assert data["degree"] == "bachelor"
+    assert data["keywords"] == ["biomechanics", "databases"]
+
+
+def test_add_writes_the_abstract_as_the_summary(repo):
+    folder = _add(repo, _ingest(repo))
+
+    assert (folder / "summary.md").read_text().startswith(
+        "This thesis presents a database for biomechanical data."
     )
+
+
+def test_missing_metadata_names_the_field(repo):
+    bare = "\\documentclass{article}\\begin{document}x\\end{document}"
+
+    with pytest.raises(ExtractError, match="title"):
+        _add(repo, _ingest(repo, main=bare, abstract=None))
+
+
+def test_override_supplies_a_missing_field(repo):
+    main = MAIN.replace(r"\newcommand{\tfgtitle}{A database for biomechanical data}", "")
+    ingest = _ingest(repo, main=main)
+
+    folder = ingest.add(
+        project_id=PROJECT, name="nieves-serrano-biomechanics-db",
+        overrides=Overrides(title="Supplied by hand"),
+    )
+    data = yaml.safe_load((folder / "entry.yaml").read_text())
+
+    assert data["title"] == "Supplied by hand"
+
+
+def test_override_beats_the_source(repo):
+    folder = _ingest(repo).add(
+        project_id=PROJECT, name="x", overrides=Overrides(year=2030),
+    )
+
+    assert folder.name == "2030-x"
+
+
+def test_extraction_failure_leaves_no_entry(repo):
+    bare = "\\documentclass{article}\\begin{document}x\\end{document}"
+
+    with pytest.raises(ExtractError):
+        _add(repo, _ingest(repo, main=bare, abstract=None))
+
+    assert not (repo / "content" / "theses").exists() or \
+        list((repo / "content" / "theses").iterdir()) == []
 
 
 def test_add_installs_pdf_and_stubs(repo):

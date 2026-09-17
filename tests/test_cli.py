@@ -62,29 +62,25 @@ def test_add_reports_a_missing_token(repo, monkeypatch, capsys):
 
     code = cli.main([
         "add", "--overleaf", "abc", "--name", "nieves-serrano-biomechanics-db",
-        "--year", "2027", "--title", "T", "--author", "A",
     ])
 
     assert code == 1
     assert "OVERLEAF_GIT_TOKEN" in capsys.readouterr().err
 
 
-def test_add_builds_the_slug_from_year_and_name(repo, monkeypatch):
+def test_add_builds_the_slug_from_the_name(repo, monkeypatch):
     seen = {}
 
-    def fake_add(self, project_id, slug, year, title, author, type="thesis", degree=None):
-        seen["slug"] = slug
+    def fake_add(self, project_id, name, overrides=None, type="thesis"):
+        seen["name"] = name
         return repo
 
     monkeypatch.setattr("tft.ingest.Ingest.add", fake_add)
 
-    code = cli.main([
-        "add", "--overleaf", "abc", "--name", "nieves-serrano-biomechanics-db",
-        "--year", "2027", "--title", "T", "--author", "A",
-    ])
+    code = cli.main(["add", "--overleaf", "abc", "--name", "nieves-serrano-biomechanics-db"])
 
     assert code == 0
-    assert seen["slug"] == "2027-nieves-serrano-biomechanics-db"
+    assert seen["name"] == "nieves-serrano-biomechanics-db"
 
 
 def test_sync_reports_no_change(repo, monkeypatch, capsys):
@@ -95,36 +91,52 @@ def test_sync_reports_no_change(repo, monkeypatch, capsys):
     assert "unchanged" in capsys.readouterr().out
 
 
-def test_add_publication_omits_degree_by_default(repo, monkeypatch):
+def test_add_passes_the_overrides_through(repo, monkeypatch):
     seen = {}
 
-    def fake_add(self, project_id, slug, year, title, author, type="thesis", degree=None):
-        seen["degree"] = degree
+    def fake_add(self, project_id, name, overrides=None, type="thesis"):
+        seen["overrides"] = overrides
         return repo
 
     monkeypatch.setattr("tft.ingest.Ingest.add", fake_add)
 
     code = cli.main([
-        "add", "--overleaf", "abc", "--name", "x", "--year", "2027",
-        "--title", "T", "--author", "A", "--type", "publication",
+        "add", "--overleaf", "abc", "--name", "x",
+        "--title", "T", "--year", "2027",
     ])
 
     assert code == 0
-    assert seen["degree"] is None
+    assert seen["overrides"].title == "T"
+    assert seen["overrides"].year == 2027
+    assert seen["overrides"].author is None
 
 
-def test_add_thesis_without_degree_fails_cleanly(repo, monkeypatch, capsys):
-    from tft.errors import MissingField
+def test_add_publication_passes_the_type(repo, monkeypatch):
+    seen = {}
 
-    def fake_add(self, project_id, slug, year, title, author, type="thesis", degree=None):
-        raise MissingField("degree is mandatory for thesis")
+    def fake_add(self, project_id, name, overrides=None, type="thesis"):
+        seen["type"] = type
+        return repo
 
     monkeypatch.setattr("tft.ingest.Ingest.add", fake_add)
 
     code = cli.main([
-        "add", "--overleaf", "abc", "--name", "x", "--year", "2027",
-        "--title", "T", "--author", "A",
+        "add", "--overleaf", "abc", "--name", "x", "--type", "publication",
     ])
 
+    assert code == 0
+    assert seen["type"] == "publication"
+
+
+def test_add_reports_an_unreadable_field(repo, monkeypatch, capsys):
+    from tft.errors import ExtractError
+
+    def fake_add(self, project_id, name, overrides=None, type="thesis"):
+        raise ExtractError("could not read title; pass --title")
+
+    monkeypatch.setattr("tft.ingest.Ingest.add", fake_add)
+
+    code = cli.main(["add", "--overleaf", "abc", "--name", "x"])
+
     assert code == 1
-    assert "degree" in capsys.readouterr().err
+    assert "--title" in capsys.readouterr().err
