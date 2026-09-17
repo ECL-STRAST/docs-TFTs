@@ -12,21 +12,25 @@ def _git(*args, cwd):
     subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True)
 
 
+def _commit(repo, text):
+    (repo / "main.tex").write_text(text)
+    _git("add", "-A", cwd=repo)
+    _git("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "x", cwd=repo)
+
+
 @pytest.fixture
 def remote(tmp_path):
     """A local git repo standing in for an Overleaf project."""
     origin = tmp_path / "origin"
     origin.mkdir()
     _git("init", "-q", "-b", "main", cwd=origin)
-    (origin / "main.tex").write_text("\\documentclass{article}\n\\begin{document}x\\end{document}\n")
-    _git("add", "-A", cwd=origin)
-    _git("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "init", cwd=origin)
+    _commit(origin, "\\documentclass{article}\n\\begin{document}x\\end{document}\n")
 
     return origin
 
 
-def test_url_embeds_the_token():
-    assert overleaf.url("abc123", TOKEN) == f"https://git:{TOKEN}@git.overleaf.com/abc123"
+def test_url_is_tokenless():
+    assert overleaf.url("abc123") == f"https://{overleaf.GIT_HOST}/abc123"
 
 
 def test_scrub_removes_every_occurrence():
@@ -46,7 +50,7 @@ def test_token_missing_from_environment(monkeypatch):
 
 
 def test_fetch_clones_then_pulls(tmp_path, remote, monkeypatch):
-    monkeypatch.setattr(overleaf, "url", lambda project_id, token: str(remote))
+    monkeypatch.setattr(overleaf, "url", lambda project_id: str(remote))
     monkeypatch.setenv(overleaf.TOKEN_ENV, TOKEN)
     dest = tmp_path / "work" / "2027-x"
 
@@ -65,7 +69,7 @@ def test_fetch_scrubs_the_token_from_failures(tmp_path, monkeypatch):
     # and carries the token into the error message git prints back.
     monkeypatch.setattr(
         overleaf, "url",
-        lambda project_id, token: f"{tmp_path}/missing-{token}",
+        lambda project_id: f"{tmp_path}/missing-{TOKEN}",
     )
 
     with pytest.raises(OverleafError) as caught:
@@ -73,20 +77,6 @@ def test_fetch_scrubs_the_token_from_failures(tmp_path, monkeypatch):
 
     assert TOKEN not in str(caught.value)
     assert "***" in str(caught.value)
-
-
-def test_token_not_stored_in_git_config(tmp_path, remote, monkeypatch):
-    """After clone, .git/config must not contain the token."""
-    monkeypatch.setattr(overleaf, "url", lambda project_id, token: str(remote))
-    monkeypatch.setenv(overleaf.TOKEN_ENV, TOKEN)
-    dest = tmp_path / "work" / "cloned"
-
-    overleaf.fetch("abc123", dest)
-
-    config = (dest / ".git" / "config").read_text()
-    assert TOKEN not in config
-    # Origin is still reachable for future pulls (without credentials).
-    assert "url = https://git.overleaf.com/abc123" in config
 
 
 def test_scrub_fallback_on_empty_stderr(tmp_path, monkeypatch):
@@ -106,3 +96,67 @@ def test_scrub_fallback_on_empty_stderr(tmp_path, monkeypatch):
 
     assert TOKEN not in str(caught.value)
     assert "***" in str(caught.value)
+
+
+def test_fetch_keeps_token_out_of_argv_and_env(tmp_path, monkeypatch):
+    """The token must reach git only via OVERLEAF_GIT_TOKEN, never argv or another env var."""
+    monkeypatch.setenv(overleaf.TOKEN_ENV, TOKEN)
+    monkeypatch.setattr(overleaf, "url", lambda project_id: "https://example.invalid/abc")
+    calls = []
+
+    def fake_run(args, **kwargs):
+        calls.append((args, kwargs["env"]))
+        return subprocess.CompletedProcess(args, 0, stdout="deadbeef\n", stderr="")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    overleaf.fetch("abc123", tmp_path / "dest")
+
+    assert calls  # fetch made at least one git call
+
+    for args, env in calls:
+        assert all(TOKEN not in arg for arg in args)
+
+        for key, value in env.items():
+            if key == overleaf.TOKEN_ENV:
+                continue
+            assert TOKEN not in value
+
+        assert env["GIT_TERMINAL_PROMPT"] == "0"
+        helper = env["GIT_CONFIG_VALUE_0"]
+        assert overleaf.TOKEN_ENV in helper
+        assert TOKEN not in helper
+
+
+def test_fetch_pull_reflects_a_pushed_commit_without_leaking_token(tmp_path, monkeypatch):
+    """End to end against a real local remote: pull fast-forwards, token stays out of .git."""
+    monkeypatch.setenv(overleaf.TOKEN_ENV, TOKEN)
+
+    bare = tmp_path / "origin.git"
+    _git("init", "-q", "--bare", "-b", "main", str(bare), cwd=tmp_path)
+
+    seed = tmp_path / "seed"
+    seed.mkdir()
+    _git("init", "-q", "-b", "main", cwd=seed)
+    _commit(seed, "\\documentclass{article}\n\\begin{document}x\\end{document}\n")
+    _git("push", "-q", str(bare), "main", cwd=seed)
+
+    monkeypatch.setattr(overleaf, "url", lambda project_id: str(bare))
+    dest = tmp_path / "work" / "2027-x"
+    first = overleaf.fetch("abc123", dest)
+
+    # Push a second commit to the remote, as an Overleaf edit would produce.
+    _commit(seed, "\\documentclass{article}\n\\begin{document}y\\end{document}\n")
+    _git("push", "-q", str(bare), "main", cwd=seed)
+    pushed = subprocess.run(
+        ["git", "rev-parse", "main"], cwd=seed, capture_output=True, text=True, check=True,
+    ).stdout.strip()
+
+    second = overleaf.fetch("abc123", dest)
+
+    assert second == pushed
+    assert second != first
+
+    for path in (dest / ".git").rglob("*"):
+        if path.is_file():
+            assert TOKEN.encode() not in path.read_bytes()
