@@ -18,3 +18,12 @@ overleaf:
 repos:
   code:
   - https://github.com/ECL-STRAST/libremotion-chloe
+keywords:
+- biomedical engineering
+- biomechanics
+- motion capture
+- c3d
+- plug-in gait
+- data visualization
+- analog data
+- physiotherapy
