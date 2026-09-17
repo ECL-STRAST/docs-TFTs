@@ -6,7 +6,9 @@ the human's overrides. Only malformed input raises.
 """
 
 import re
+import unicodedata
 from dataclasses import dataclass
+from pathlib import Path
 
 from .errors import ExtractError
 
@@ -14,6 +16,16 @@ from .errors import ExtractError
 TITLE_MACRO = "tfgtitle"
 AUTHOR_MACRO = "authorname"
 DATE_MACRO = "fecha"
+
+# Cover-page phrases, matched against accent-folded uppercase text so
+# "Máster", "MASTER" and "máster" are one case.
+DEGREES = (
+    (re.compile(r"TRABAJO (?:DE )?FIN DE GRADO"), "bachelor"),
+    (re.compile(r"TRABAJO (?:DE )?FIN DE MASTER"), "master"),
+    (re.compile(r"TESIS DOCTORAL"), "phd"),
+)
+
+TEX_GLOB = "*.tex"
 
 
 @dataclass(frozen=True)
@@ -59,3 +71,25 @@ def braced(text: str, open_at: int) -> tuple[str, int]:
             return text[open_at + 1:i], i + 1
 
     raise ExtractError("unbalanced braces in the LaTeX source")
+
+
+def degree(src: Path) -> str | None:
+    """The degree named on the cover, or None when no phrase appears."""
+    found = set()
+
+    for path in sorted(src.rglob(TEX_GLOB)):
+        text = fold(path.read_text(encoding="utf-8", errors="ignore"))
+        found |= {name for pattern, name in DEGREES if pattern.search(text)}
+
+    # Two different phrases means a stray citation, not a second degree.
+    if len(found) > 1:
+        raise ExtractError(f"degree is ambiguous ({', '.join(sorted(found))}); pass --degree")
+
+    return found.pop() if found else None
+
+
+def fold(text: str) -> str:
+    """Uppercase with accents stripped, for matching Spanish cover phrases."""
+    decomposed = unicodedata.normalize("NFKD", text)
+
+    return "".join(c for c in decomposed if not unicodedata.combining(c)).upper()

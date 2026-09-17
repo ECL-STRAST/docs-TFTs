@@ -42,3 +42,53 @@ def test_meta_is_frozen():
 
     with pytest.raises(AttributeError):
         meta.title = "other"
+
+
+def _tree(tmp_path, **files):
+    """A source tree: _tree(p, **{"main.tex": "...", "ch/a.tex": "..."})."""
+    for name, text in files.items():
+        path = tmp_path / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+
+    return tmp_path
+
+
+def test_bachelor_degree_from_the_cover(tmp_path):
+    src = _tree(tmp_path, **{"chapters/0-preamble.tex": "TRABAJO FIN DE GRADO"})
+
+    assert tex.degree(src) == "bachelor"
+
+
+def test_degree_phrase_with_the_optional_de(tmp_path):
+    src = _tree(tmp_path, **{"main.tex": "TRABAJO DE FIN DE GRADO"})
+
+    assert tex.degree(src) == "bachelor"
+
+
+def test_master_degree_is_accent_insensitive(tmp_path):
+    src = _tree(tmp_path, **{"main.tex": "Trabajo de Fin de Máster"})
+
+    assert tex.degree(src) == "master"
+
+
+def test_phd_degree(tmp_path):
+    src = _tree(tmp_path, **{"main.tex": "TESIS DOCTORAL"})
+
+    assert tex.degree(src) == "phd"
+
+
+def test_no_degree_phrase_is_none(tmp_path):
+    src = _tree(tmp_path, **{"main.tex": "nothing relevant here"})
+
+    assert tex.degree(src) is None
+
+
+def test_two_degrees_is_ambiguous(tmp_path):
+    src = _tree(
+        tmp_path,
+        **{"main.tex": "TRABAJO FIN DE GRADO", "biblio.tex": "Tesis Doctoral"},
+    )
+
+    with pytest.raises(ExtractError, match="ambiguous"):
+        tex.degree(src)
