@@ -46,6 +46,29 @@ def test_build_failure_writes_the_log(tmp_path, monkeypatch):
     assert "Undefined control sequence" in (out / latex.LOG_NAME).read_text()
 
 
+def test_build_passes_shell_escape(tmp_path, monkeypatch):
+    src = tmp_path / "src"
+    src.mkdir()
+    out = tmp_path / "out"
+    seen = {}
+
+    def fake_run(args, **kwargs):
+        seen["args"] = args
+        return _fake_success()
+
+    monkeypatch.setattr(latex.subprocess, "run", fake_run)
+
+    latex.build(src, src / "main.tex", out)
+
+    assert latex.SHELL_ESCAPE in seen["args"]
+
+
+def _fake_success():
+    import subprocess
+
+    return subprocess.CompletedProcess("latexmk", 0)
+
+
 def _fake_failure(output):
     import subprocess
 

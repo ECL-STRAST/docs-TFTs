@@ -25,6 +25,22 @@ what makes an entry public; there is no flag to get wrong.
 `latexmk` and a TeX distribution are needed to add or sync entries, but not
 to build the site.
 
+### LaTeX requirements
+
+A minimal TeX install is not enough. The group's theses need:
+`acronym appendix booktabs enumitem eso-pic eurosym fancyvrb float framed
+mathrsfs mathtools minted multirow placeins siunitx subfig titlesec xcolor`.
+On Debian/Ubuntu:
+
+    sudo apt install texlive-latex-extra texlive-latex-recommended \
+            texlive-science texlive-fonts-extra python3-pygments
+
+`texlive-full` also works if you'd rather not think about it.
+`python3-pygments` is required because `minted` shells out to it.
+
+`tft` compiles with `-shell-escape` for `minted`, which lets the document
+run shell commands during compilation. Only compile sources you trust.
+
 ## Adding an entry
 
     tft add --overleaf <project-id> --name nieves-serrano-biomechanics-db \

@@ -8,6 +8,9 @@ from .errors import CompileError
 LATEXMK = "latexmk"
 LOG_NAME = "latexmk.log"
 ROOT_MARKER = "\\documentclass"
+# minted needs shell access to run Pygments; this lets a compiled
+# document execute shell commands, so only compile trusted sources.
+SHELL_ESCAPE = "-shell-escape"
 
 
 def find_main(src: Path) -> Path:
@@ -29,7 +32,7 @@ def build(src: Path, main: Path, out: Path) -> Path:
     out.mkdir(parents=True, exist_ok=True)
     args = [
         LATEXMK, "-pdf", "-interaction=nonstopmode", "-halt-on-error",
-        f"-outdir={out}", main.name,
+        SHELL_ESCAPE, f"-outdir={out}", main.name,
     ]
 
     try:
