@@ -13,12 +13,16 @@ REDACTED = "***"
 # A credential helper that reads the token from the environment at git's
 # request, instead of it ever appearing in a URL, argv, or .git/config.
 CREDENTIAL_HELPER = f'!f(){{ echo username=git; echo "password=${TOKEN_ENV}"; }};f'
-GIT_ENV = {
-    "GIT_CONFIG_COUNT": "1",
-    "GIT_CONFIG_KEY_0": "credential.helper",
-    "GIT_CONFIG_VALUE_0": CREDENTIAL_HELPER,
-    "GIT_TERMINAL_PROMPT": "0",
-}
+
+# An empty credential.helper value resets the (possibly inherited, e.g. a
+# user's global `credential.helper = store`) helper list before ours is
+# added. Without it, git would also consult those helpers, and one that
+# persists credentials (like `store`) would write the token to disk after
+# a successful auth.
+_GIT_CONFIG_ENTRIES = [
+    ("credential.helper", ""),
+    ("credential.helper", CREDENTIAL_HELPER),
+]
 
 
 def token() -> str:
@@ -54,14 +58,40 @@ def fetch(project_id: str, dest: Path) -> str:
 
 
 def _run(args: list[str], secret: str, cwd: Path) -> str:
-    env = os.environ | GIT_ENV
+    env = _build_git_env()
 
     try:
         done = subprocess.run(args, cwd=cwd, env=env, capture_output=True, text=True, check=True)
     except subprocess.CalledProcessError as exc:
-        # Suppress exception chain: str(CalledProcessError) embeds the full
-        # command line argv, which contains the token. Omit the chain so the
-        # traceback does not leak it.
+        # Omit the chain: git's stderr and str(CalledProcessError) can carry
+        # remote URLs and other diagnostic detail. Only the scrubbed message
+        # (kept as a guard, though no production path taints it now) should
+        # reach the user.
         raise OverleafError(scrub(exc.stderr or str(exc), secret)) from None
 
     return done.stdout
+
+
+def _build_git_env() -> dict[str, str]:
+    """The caller's environment, plus our GIT_CONFIG_* entries appended
+    after any the caller already set, so neither side's entries are lost."""
+    env = dict(os.environ)
+    index = _config_count(env)
+
+    for key, value in _GIT_CONFIG_ENTRIES:
+        env[f"GIT_CONFIG_KEY_{index}"] = key
+        env[f"GIT_CONFIG_VALUE_{index}"] = value
+        index += 1
+
+    env["GIT_CONFIG_COUNT"] = str(index)
+    env["GIT_TERMINAL_PROMPT"] = "0"
+
+    return env
+
+
+def _config_count(env: dict[str, str]) -> int:
+    """Entries already reserved via GIT_CONFIG_COUNT; 0 if absent or bad."""
+    try:
+        return max(int(env.get("GIT_CONFIG_COUNT", 0)), 0)
+    except ValueError:
+        return 0

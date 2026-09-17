@@ -123,9 +123,41 @@ def test_fetch_keeps_token_out_of_argv_and_env(tmp_path, monkeypatch):
             assert TOKEN not in value
 
         assert env["GIT_TERMINAL_PROMPT"] == "0"
-        helper = env["GIT_CONFIG_VALUE_0"]
-        assert overleaf.TOKEN_ENV in helper
-        assert TOKEN not in helper
+        count = int(env["GIT_CONFIG_COUNT"])
+        values = [env[f"GIT_CONFIG_VALUE_{i}"] for i in range(count)]
+
+        # Reset entry ("") must precede the real helper, so it discards
+        # any credential.helper inherited from the caller's own git config.
+        assert values.index("") < values.index(overleaf.CREDENTIAL_HELPER)
+
+
+def test_fetch_preserves_callers_git_config_entries(tmp_path, monkeypatch):
+    """A caller's own GIT_CONFIG_* entries must survive alongside ours."""
+    monkeypatch.setenv(overleaf.TOKEN_ENV, TOKEN)
+    monkeypatch.setattr(overleaf, "url", lambda project_id: "https://example.invalid/abc")
+    monkeypatch.setenv("GIT_CONFIG_COUNT", "1")
+    monkeypatch.setenv("GIT_CONFIG_KEY_0", "caller.setting")
+    monkeypatch.setenv("GIT_CONFIG_VALUE_0", "keep-me")
+    calls = []
+
+    def fake_run(args, **kwargs):
+        calls.append(kwargs["env"])
+        return subprocess.CompletedProcess(args, 0, stdout="deadbeef\n", stderr="")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    overleaf.fetch("abc123", tmp_path / "dest")
+
+    for env in calls:
+        assert env["GIT_CONFIG_KEY_0"] == "caller.setting"
+        assert env["GIT_CONFIG_VALUE_0"] == "keep-me"
+        assert int(env["GIT_CONFIG_COUNT"]) == 3
+
+        keys = [env[f"GIT_CONFIG_KEY_{i}"] for i in range(1, 3)]
+        values = [env[f"GIT_CONFIG_VALUE_{i}"] for i in range(1, 3)]
+
+        assert keys == ["credential.helper", "credential.helper"]
+        assert values == ["", overleaf.CREDENTIAL_HELPER]
 
 
 def test_fetch_pull_reflects_a_pushed_commit_without_leaking_token(tmp_path, monkeypatch):
