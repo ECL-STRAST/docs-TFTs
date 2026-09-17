@@ -21,6 +21,9 @@ MINIMAL = {
 FULL = MINIMAL | {
     "supervisors": ["Rodrigo Garcia Carmona"],
     "topics": ["biomechanics", "rehabilitation"],
+    "keywords": ["motion capture", "c3d"],
+    "score": 10,
+    "honours": True,
     "repos": {
         "code": ["https://github.com/ECL-STRAST/libremotion-chloe"],
         "docs": "https://github.com/ECL-STRAST/libremotion-chloe-docs",
@@ -76,6 +79,9 @@ def test_index_json_matches_the_golden_record(repo):
         "language": "en",
         "topics": ["biomechanics", "rehabilitation"],
         "supervisors": ["Rodrigo Garcia Carmona"],
+        "keywords": ["motion capture", "c3d"],
+        "score": 10,
+        "honours": True,
         "url": "entries/2027-nieves-serrano-biomechanics-db/",
         "doc": "entries/2027-nieves-serrano-biomechanics-db/thesis.pdf",
         "slides": "entries/2027-nieves-serrano-biomechanics-db/slides.pdf",
@@ -191,3 +197,56 @@ def test_build_refuses_a_foreign_directory(repo):
         Site(cfg, Catalog(cfg)).build(out)
 
     assert (out / "important.txt").read_text() == "do not delete me"
+
+
+def test_entry_without_a_score_has_nulls(repo):
+    _entry(repo, "2027-x", MINIMAL)
+
+    record = json.loads((_build(repo) / "index.json").read_text())[0]
+
+    assert record["score"] is None
+    assert record["honours"] is False
+    assert record["keywords"] == []
+
+
+def test_entry_page_shows_the_score(repo):
+    _entry(repo, "2027-x", FULL)
+
+    page = (_build(repo) / "entries" / "2027-x" / "index.html").read_text()
+
+    assert "10 / 10" in page
+    assert "Matrícula de Honor" in page
+
+
+def test_entry_page_lists_keywords(repo):
+    _entry(repo, "2027-x", FULL)
+
+    page = (_build(repo) / "entries" / "2027-x" / "index.html").read_text()
+
+    assert "motion capture" in page
+
+
+def test_entry_page_shows_the_portrait_when_present(repo):
+    folder = _entry(repo, "2027-x", FULL | {"photo": "photo.jpg"})
+    (folder / "photo.jpg").write_bytes(b"\xff\xd8\xff")
+
+    out = _build(repo)
+    page = (out / "entries" / "2027-x" / "index.html").read_text()
+
+    assert 'src="photo.jpg"' in page
+    assert (out / "entries" / "2027-x" / "photo.jpg").is_file()
+
+
+def test_entry_page_omits_the_portrait_block_when_absent(repo):
+    _entry(repo, "2027-x", FULL)
+
+    page = (_build(repo) / "entries" / "2027-x" / "index.html").read_text()
+
+    assert "portrait" not in page
+
+
+def test_a_declared_photo_missing_from_disk_fails_the_build(repo):
+    _entry(repo, "2027-x", FULL | {"photo": "photo.jpg"})
+
+    with pytest.raises(BadValue, match="2027-x.*photo.jpg"):
+        _build(repo)

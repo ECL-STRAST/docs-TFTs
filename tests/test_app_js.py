@@ -57,3 +57,10 @@ def test_app_escapes_quotes_in_attributes():
     # URL in href attribute must escape quotes to prevent attribute injection.
     source = APP_JS.read_text()
     assert "&quot;" in source
+
+
+def test_app_reads_the_score_and_keywords():
+    source = APP_JS.read_text()
+
+    assert "e.score" in source
+    assert "e.keywords" in source

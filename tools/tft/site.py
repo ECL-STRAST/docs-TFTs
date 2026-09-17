@@ -36,6 +36,9 @@ def record(entry: Entry) -> dict:
         "language": entry.language,
         "topics": list(entry.topics),
         "supervisors": list(entry.supervisors),
+        "keywords": list(entry.keywords),
+        "score": entry.score,
+        "honours": entry.honours,
         "url": f"{base}/",
         "doc": f"{base}/{DOC_NAME[entry.type]}",
         "slides": f"{base}/{entry.slides}" if entry.slides else None,
@@ -85,6 +88,9 @@ class Site:
             if entry.slides:
                 self._require(source, entry.slides, entry.slug)
 
+            if entry.photo:
+                self._require(source, entry.photo, entry.slug)
+
     def _require(self, source: Path, name: str, slug: str) -> None:
         if not store.exists(source / name):
             raise BadValue(f"{slug}: missing {name}")
@@ -113,6 +119,9 @@ class Site:
 
         if entry.slides:
             shutil.copyfile(source / entry.slides, folder / entry.slides)
+
+        if entry.photo:
+            shutil.copyfile(source / entry.photo, folder / entry.photo)
 
         page = self._jinja.get_template("entry.html").render(
             entry=entry, doc=doc, summary=markdown.markdown(entry.summary),

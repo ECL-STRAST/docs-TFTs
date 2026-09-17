@@ -24,8 +24,15 @@ function matches(e, f) {
   if (f.slides && !e.has_slides) return false;
   if (!f.q) return true;
 
-  const haystack = [e.title, e.author, e.summary, e.topics.join(" ")].join(" ").toLowerCase();
+  const haystack = [e.title, e.author, e.summary, e.topics.join(" "), e.keywords.join(" ")]
+    .join(" ").toLowerCase();
   return haystack.includes(f.q);
+}
+
+function badge(e) {
+  if (e.score == null) return "";
+  const honours = e.honours ? " &middot; Matrícula de Honor" : "";
+  return `<span class="score">${escape(e.score)} / 10${honours}</span>`;
 }
 
 function card(e) {
@@ -35,6 +42,7 @@ function card(e) {
   return `<li>
     <a href="${escape(e.url)}">${escape(e.title)}</a>
     <p class="meta">${escape(e.author)} &middot; ${escape(e.year)}${degree}</p>
+    ${badge(e)}
     <p>${escape(e.summary)}</p>
     <p class="topics">${topics}</p>
   </li>`;

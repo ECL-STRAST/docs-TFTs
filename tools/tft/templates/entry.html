@@ -10,17 +10,30 @@
 <p><a href="../../">&larr; All entries</a></p>
 
 <article>
+  {% if entry.photo %}
+  <img class="portrait" src="{{ entry.photo }}" alt="{{ entry.author }}">
+  {% endif %}
+
   <h1>{{ entry.title }}</h1>
   <p class="meta">
     {{ entry.author }} &middot; {{ entry.year }} &middot; {{ entry.type }}
     {%- if entry.degree %} ({{ entry.degree }}){% endif %}
   </p>
 
+  {% if entry.score is not none %}
+  <p><span class="score">{{ entry.score }} / 10{% if entry.honours %}
+    &middot; Matrícula de Honor{% endif %}</span></p>
+  {% endif %}
+
   {% if entry.supervisors %}
   <p class="meta">Supervised by {{ entry.supervisors|join(", ") }}</p>
   {% endif %}
 
   <p class="topics">{% for topic in entry.topics %}<span>{{ topic }}</span>{% endfor %}</p>
+
+  {% if entry.keywords %}
+  <p class="keywords">{% for word in entry.keywords %}<span>{{ word }}</span>{% endfor %}</p>
+  {% endif %}
 
   {# summary.md is repo content, reviewed via git like this template;
      render its markdown as HTML rather than escaping it. #}
