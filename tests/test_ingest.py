@@ -235,6 +235,23 @@ def test_failed_mirror_keeps_the_pdf_and_yaml(repo):
     assert data["overleaf"]["commit"] == SHA
 
 
+def test_failed_sync_keeps_the_previous_summary(repo):
+    """A failed install must not leave summary.md re-derived early."""
+    folder = _add(repo, _ingest(repo))
+    (folder / "summary.md").write_text("Original summary.\n")
+
+    # Same mirror-blocking trick as test_failed_mirror_keeps_the_pdf_and_yaml:
+    # _install fails before summary.md is touched.
+    private = repo.parent / "private"
+    shutil.rmtree(private)
+    private.write_text("blocker")
+
+    with pytest.raises(NotADirectoryError):
+        _ingest(repo, sha="d" * 40).sync("2027-nieves-serrano-biomechanics-db")
+
+    assert (folder / "summary.md").read_text() == "Original summary.\n"
+
+
 def test_failed_copy_leaves_no_tmp_residue(repo, monkeypatch):
     """A copy failure must not leave the .tmp sibling behind."""
     folder = _add(repo, _ingest(repo))

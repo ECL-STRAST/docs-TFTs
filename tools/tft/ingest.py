@@ -82,14 +82,15 @@ class Ingest:
         pdf = self._compile(work, entry.overleaf.main)
         folder = self._catalog.dir_for(entry)
 
-        # summary.md is derived from the abstract, so it is rewritten here.
-        store.write_summary(folder, meta.abstract)
-
         refreshed = dataclasses.replace(
             entry, title=meta.title, author=meta.author, year=meta.year,
             degree=meta.degree, keywords=meta.keywords,
         )
         self._install(refreshed, folder, pdf, work, sha, project_id)
+
+        # summary.md is derived from the abstract, so it is rewritten here,
+        # only once _install succeeds, so a failure leaves it untouched.
+        store.write_summary(folder, meta.abstract)
 
         return SyncResult(changed=True, warnings=_year_drift(entry.year, meta.year, slug))
 
