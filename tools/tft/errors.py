@@ -37,5 +37,9 @@ class CompileError(TftError):
     """The document could not be compiled."""
 
 
+class ExtractError(TftError):
+    """A thesis's metadata could not be read from its LaTeX source."""
+
+
 class UnsafeOutputDir(TftError):
     """--out names a directory that is not a previous build."""
