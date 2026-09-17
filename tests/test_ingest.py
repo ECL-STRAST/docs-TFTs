@@ -5,6 +5,7 @@ import yaml
 
 from tft import config
 from tft.catalog import Catalog
+from tft.entry import PUBLICATION
 from tft.errors import CompileError, ExtractError
 from tft.ingest import Ingest, Overrides
 
@@ -122,6 +123,23 @@ def test_override_beats_the_source(repo):
     )
 
     assert folder.name == "2030-x"
+
+
+def test_add_publication_needs_only_flags(repo):
+    # A conference paper has no cover phrase, no abstract chapter: none of
+    # the thesis landmarks apply, and none should be required.
+    bare = "\\documentclass{article}\\begin{document}x\\end{document}"
+    ingest = _ingest(repo, main=bare, abstract=None)
+
+    folder = ingest.add(
+        project_id=PROJECT, name="garcia-paper",
+        overrides=Overrides(title="A Paper", author="X. Garcia", year=2027),
+        type=PUBLICATION,
+    )
+    data = yaml.safe_load((folder / "entry.yaml").read_text())
+
+    assert data["title"] == "A Paper"
+    assert "degree" not in data
 
 
 def test_extraction_failure_leaves_no_entry(repo):

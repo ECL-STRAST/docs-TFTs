@@ -7,16 +7,19 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from . import latex, overleaf, store, tex
-from .catalog import COLLECTIONS, Catalog
+from .catalog import COLLECTIONS, STUB_SUMMARY, Catalog
 from .config import Config
-from .entry import DOC_NAME, THESIS, Entry, Overleaf
+from .entry import DOC_NAME, PUBLICATION, THESIS, Entry, Overleaf
 from .errors import ExtractError
 
 SOURCES = "sources"
 
-# Everything an entry cannot be created without. Each may instead be
-# supplied by hand when a thesis does not follow the group's template.
-REQUIRED = ("title", "author", "year", "degree", "abstract", "keywords")
+# Everything an entry cannot be created without, per type. A publication
+# has no cover phrase, no abstract chapter: only the CLI flags apply.
+REQUIRED_BY_TYPE = {
+    THESIS: ("title", "author", "year", "degree", "abstract", "keywords"),
+    PUBLICATION: ("title", "author", "year"),
+}
 
 
 @dataclass(frozen=True)
@@ -49,14 +52,14 @@ class Ingest:
 
         # Read metadata before compiling: a missing field costs seconds,
         # a LaTeX run costs a minute.
-        meta = self._meta(work, overrides)
+        meta = self._meta(work, overrides, type)
         pdf = self._compile(work, main=None)
 
         slug = f"{meta.year}-{name}"
         folder = self._catalog.create(
             slug=slug, type=type, year=meta.year, title=meta.title,
-            author=meta.author, degree=meta.degree, keywords=meta.keywords,
-            summary=meta.abstract,
+            author=meta.author, degree=_degree_for(type, meta),
+            keywords=meta.keywords, summary=meta.abstract or STUB_SUMMARY,
         )
         entry = self._catalog.find(slug)
 
@@ -78,19 +81,21 @@ class Ingest:
         if sha == entry.overleaf.commit:
             return SyncResult(changed=False)
 
-        meta = self._meta(work, Overrides())
+        meta = self._meta(work, Overrides(), entry.type)
         pdf = self._compile(work, entry.overleaf.main)
         folder = self._catalog.dir_for(entry)
 
         refreshed = dataclasses.replace(
             entry, title=meta.title, author=meta.author, year=meta.year,
-            degree=meta.degree, keywords=meta.keywords,
+            degree=_degree_for(entry.type, meta), keywords=meta.keywords,
         )
         self._install(refreshed, folder, pdf, work, sha, project_id)
 
-        # summary.md is derived from the abstract, so it is rewritten here,
-        # only once _install succeeds, so a failure leaves it untouched.
-        store.write_summary(folder, meta.abstract)
+        # summary.md is derived from the abstract; a publication has none,
+        # so its hand-written summary is left alone. Rewritten only once
+        # _install succeeds, so a failure leaves it untouched.
+        if meta.abstract:
+            store.write_summary(folder, meta.abstract)
 
         return SyncResult(changed=True, warnings=_year_drift(entry.year, meta.year, slug))
 
@@ -99,7 +104,7 @@ class Ingest:
 
         return self._build(work, root, self._cfg.work / "out")
 
-    def _meta(self, work: Path, overrides: Overrides) -> tex.Meta:
+    def _meta(self, work: Path, overrides: Overrides, type: str) -> tex.Meta:
         """Source metadata with the human's overrides laid on top."""
         found = tex.read(work)
         supplied = {
@@ -108,7 +113,7 @@ class Ingest:
             if value is not None
         }
         meta = dataclasses.replace(found, **supplied)
-        missing = [name for name in REQUIRED if not getattr(meta, name)]
+        missing = [name for name in REQUIRED_BY_TYPE[type] if not getattr(meta, name)]
 
         if missing:
             raise ExtractError(f"could not read {', '.join(missing)}; {_remedy(missing)}")
@@ -162,6 +167,11 @@ class Ingest:
 
 # Fields the CLI can supply; the rest must be fixed in the LaTeX itself.
 OVERRIDABLE = ("title", "author", "year", "degree")
+
+
+def _degree_for(type: str, meta: tex.Meta) -> str | None:
+    """A publication never has a degree, even if a cover phrase leaked in."""
+    return meta.degree if type == THESIS else None
 
 
 def _year_drift(was: int, now: int, slug: str) -> tuple[str, ...]:
