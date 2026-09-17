@@ -12,7 +12,7 @@ from . import store
 from .catalog import Catalog
 from .config import Config
 from .entry import DOC_NAME, Entry
-from .errors import BadValue
+from .errors import BadValue, UnsafeOutputDir
 
 SITE = "site"
 INDEX_JSON = "index.json"
@@ -60,6 +60,7 @@ class Site:
         self._verify_files(entries)
 
         if out.exists():
+            self._require_previous_build(out)
             shutil.rmtree(out)
 
         out.mkdir(parents=True)
@@ -69,6 +70,11 @@ class Site:
 
         for entry in entries:
             self._write_entry(out, entry)
+
+    def _require_previous_build(self, out: Path) -> None:
+        """Refuse to wipe a directory unless it looks like a prior build."""
+        if not (out / INDEX_JSON).is_file():
+            raise UnsafeOutputDir(f"{out} exists and is not a previous build; remove it yourself")
 
     def _verify_files(self, entries: list[Entry]) -> None:
         """Confirm every file a build would copy exists, before out is wiped."""
@@ -85,7 +91,9 @@ class Site:
 
     def _write_index(self, out: Path, entries: list[Entry]) -> None:
         records = [record(entry) for entry in entries]
-        (out / INDEX_JSON).write_text(json.dumps(records, indent=1, ensure_ascii=False))
+        (out / INDEX_JSON).write_text(
+            json.dumps(records, indent=1, ensure_ascii=False), encoding="utf-8",
+        )
 
         page = self._jinja.get_template("index.html").render(
             entries=entries,
@@ -93,7 +101,7 @@ class Site:
             degrees=sorted({e.degree for e in entries if e.degree}),
             topics=sorted({t for e in entries for t in e.topics}),
         )
-        (out / "index.html").write_text(page)
+        (out / "index.html").write_text(page, encoding="utf-8")
 
     def _write_entry(self, out: Path, entry: Entry) -> None:
         folder = out / ENTRIES / entry.slug
@@ -109,7 +117,7 @@ class Site:
         page = self._jinja.get_template("entry.html").render(
             entry=entry, doc=doc, summary=markdown.markdown(entry.summary),
         )
-        (folder / "index.html").write_text(page)
+        (folder / "index.html").write_text(page, encoding="utf-8")
 
     def _write_assets(self, out: Path) -> None:
         """Copied verbatim: assets are not templates and must not be rendered."""

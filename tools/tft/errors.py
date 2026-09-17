@@ -35,3 +35,7 @@ class OverleafError(TftError):
 
 class CompileError(TftError):
     """The document could not be compiled."""
+
+
+class UnsafeOutputDir(TftError):
+    """--out names a directory that is not a previous build."""

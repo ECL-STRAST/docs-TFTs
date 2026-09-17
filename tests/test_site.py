@@ -5,7 +5,7 @@ import yaml
 
 from tft import config
 from tft.catalog import Catalog
-from tft.errors import BadValue
+from tft.errors import BadValue, UnsafeOutputDir
 from tft.site import Site
 
 MINIMAL = {
@@ -152,3 +152,42 @@ def test_missing_document_names_the_slug(repo):
 
     with pytest.raises(BadValue, match="2027-x"):
         _build(repo)
+
+
+def test_build_into_a_fresh_path_works(repo):
+    _entry(repo, "2027-x", MINIMAL)
+
+    out = _build(repo)
+
+    assert (out / "index.html").is_file()
+
+
+def test_accents_survive_round_trip(repo):
+    """entry.yaml and index.json must stay UTF-8, regardless of locale."""
+    name = "Rodrigo García Carmona"
+    _entry(repo, "2027-x", FULL | {"author": name})
+    cfg = config.load(repo)
+    cat = Catalog(cfg)
+    cat.save(cat.find("2027-x"))  # round-trip through store.write
+
+    out = _build(repo)
+
+    entry_yaml = (repo / "content" / "theses" / "2027-x" / "entry.yaml").read_text(encoding="utf-8")
+    assert name in entry_yaml
+
+    index = (out / "index.json").read_text(encoding="utf-8")
+    assert name in index
+
+
+def test_build_refuses_a_foreign_directory(repo):
+    """A directory without index.json is not a previous build; it survives."""
+    _entry(repo, "2027-x", MINIMAL)
+    cfg = config.load(repo)
+    out = repo / "not-a-build"
+    out.mkdir()
+    (out / "important.txt").write_text("do not delete me")
+
+    with pytest.raises(UnsafeOutputDir, match=str(out)):
+        Site(cfg, Catalog(cfg)).build(out)
+
+    assert (out / "important.txt").read_text() == "do not delete me"
