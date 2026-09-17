@@ -46,6 +46,55 @@ def test_build_failure_writes_the_log(tmp_path, monkeypatch):
     assert "Undefined control sequence" in (out / latex.LOG_NAME).read_text()
 
 
+def test_build_failure_names_error_count_and_first(tmp_path, monkeypatch):
+    src = tmp_path / "src"
+    src.mkdir()
+    out = tmp_path / "out"
+    out.mkdir()
+    (out / "main.log").write_text(
+        "! Undefined control sequence.\nl.25 \\end{itemize}\n\n"
+        "! Extra }, or forgotten \\endgroup.\nl.40 }\n"
+    )
+
+    def fail(args, **kwargs):
+        raise _fake_failure("latexmk output, no ! lines here\n")
+
+    monkeypatch.setattr(latex.subprocess, "run", fail)
+
+    with pytest.raises(CompileError, match=r"2 errors.*Undefined control sequence"):
+        latex.build(src, src / "main.tex", out)
+
+
+def test_build_failure_without_tex_log(tmp_path, monkeypatch):
+    src = tmp_path / "src"
+    src.mkdir()
+    out = tmp_path / "out"
+
+    def fail(args, **kwargs):
+        raise _fake_failure("! Undefined control sequence.\n")
+
+    monkeypatch.setattr(latex.subprocess, "run", fail)
+
+    with pytest.raises(CompileError, match="failed to compile; see"):
+        latex.build(src, src / "main.tex", out)
+
+
+def test_build_failure_tex_log_without_errors(tmp_path, monkeypatch):
+    src = tmp_path / "src"
+    src.mkdir()
+    out = tmp_path / "out"
+    out.mkdir()
+    (out / "main.log").write_text("nothing alarming here\n")
+
+    def fail(args, **kwargs):
+        raise _fake_failure("! Undefined control sequence.\n")
+
+    monkeypatch.setattr(latex.subprocess, "run", fail)
+
+    with pytest.raises(CompileError, match="failed to compile; see"):
+        latex.build(src, src / "main.tex", out)
+
+
 def test_build_passes_shell_escape(tmp_path, monkeypatch):
     src = tmp_path / "src"
     src.mkdir()
