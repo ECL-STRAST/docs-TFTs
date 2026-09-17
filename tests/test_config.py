@@ -34,3 +34,24 @@ def test_non_string_private_path_is_rejected(tmp_path):
 
     with pytest.raises(BadValue):
         config.load(tmp_path)
+
+
+def test_defaults_to_the_public_mirror_url(tmp_path):
+    cfg = config.load(tmp_path)
+
+    assert cfg.mirror_base == config.DEFAULT_MIRROR_BASE
+
+
+def test_toml_overrides_mirror_base(tmp_path):
+    (tmp_path / "tft.toml").write_text('[paths]\nmirror_base = "https://example.org/x"\n')
+
+    cfg = config.load(tmp_path)
+
+    assert cfg.mirror_base == "https://example.org/x"
+
+
+def test_non_string_mirror_base_is_rejected(tmp_path):
+    (tmp_path / "tft.toml").write_text("[paths]\nmirror_base = 7\n")
+
+    with pytest.raises(BadValue):
+        config.load(tmp_path)

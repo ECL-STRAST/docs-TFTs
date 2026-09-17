@@ -1,7 +1,7 @@
-# tools/tft/ingest.py
 """Brings an Overleaf project into the catalog: fetch, compile, mirror."""
 
 import dataclasses
+import os
 import shutil
 from pathlib import Path
 
@@ -69,7 +69,9 @@ class Ingest:
         # public PDF and entry.yaml disagreeing about which commit built it.
         mirror = self._mirror(entry, work)
 
-        shutil.copyfile(pdf, folder / DOC_NAME[entry.type])
+        target = folder / DOC_NAME[entry.type]
+        tmp = shutil.copyfile(pdf, target.with_name(target.name + ".tmp"))
+        os.replace(tmp, target)
         updated = dataclasses.replace(
             entry,
             overleaf=Overleaf(
@@ -84,7 +86,8 @@ class Ingest:
 
     def _mirror(self, entry: Entry, work: Path) -> str:
         """Copy the sources into the private repo, minus git's bookkeeping."""
-        dest = self._cfg.private / SOURCES / COLLECTIONS[entry.type] / entry.slug
+        collection = COLLECTIONS[entry.type]
+        dest = self._cfg.private / SOURCES / collection / entry.slug
 
         if dest.exists():
             shutil.rmtree(dest)
@@ -92,4 +95,4 @@ class Ingest:
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copytree(work, dest, ignore=shutil.ignore_patterns(".git"))
 
-        return str(dest)
+        return f"{self._cfg.mirror_base}/{collection}/{entry.slug}"

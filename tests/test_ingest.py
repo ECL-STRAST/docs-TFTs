@@ -1,4 +1,3 @@
-# tests/test_ingest.py
 import shutil
 
 import pytest
@@ -77,6 +76,34 @@ def test_add_mirrors_sources_without_git(repo):
     assert (mirror / "main.tex").is_file()
     assert (mirror / "figure.png").is_file()
     assert not (mirror / ".git").exists()
+
+
+def test_recorded_mirror_is_a_url_not_a_local_path(repo):
+    folder = _add(repo, _ingest(repo))
+
+    data = yaml.safe_load((folder / "entry.yaml").read_text())
+    expected = (
+        f"{config.DEFAULT_MIRROR_BASE}/theses/2027-nieves-serrano-biomechanics-db"
+    )
+
+    assert data["overleaf"]["mirror"] == expected
+
+
+def test_mirror_base_override_is_honoured(repo):
+    (repo / "tft.toml").write_text(
+        (repo / "tft.toml").read_text() + 'mirror_base = "https://example.org/sources"\n'
+    )
+
+    folder = _add(repo, _ingest(repo))
+
+    data = yaml.safe_load((folder / "entry.yaml").read_text())
+    assert data["overleaf"]["mirror"] == (
+        "https://example.org/sources/theses/2027-nieves-serrano-biomechanics-db"
+    )
+
+    # The actual files still land at the local private-repo path.
+    mirror_dir = repo.parent / "private" / "sources" / "theses" / "2027-nieves-serrano-biomechanics-db"
+    assert (mirror_dir / "main.tex").is_file()
 
 
 def test_add_leaves_nothing_behind_when_the_compile_fails(repo):
