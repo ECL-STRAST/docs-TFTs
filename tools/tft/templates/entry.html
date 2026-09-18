@@ -22,7 +22,14 @@
 
   <h1>{{ entry.title }}</h1>
   <p class="meta">
-    {{ entry.author }} &middot; {{ entry.year }} &middot; {{ entry.type }}
+    {{ entry.author }}
+    {%- if entry.author_github %}
+    <a class="social" href="{{ entry.author_github }}" aria-label="GitHub">{% include "icons/github.svg" %}</a>
+    {%- endif %}
+    {%- if entry.author_linkedin %}
+    <a class="social" href="{{ entry.author_linkedin }}" aria-label="LinkedIn">{% include "icons/linkedin.svg" %}</a>
+    {%- endif %}
+    &middot; {{ entry.year }} &middot; {{ entry.type }}
     {%- if entry.degree %} ({{ entry.degree }}){% endif %}
     {%- if entry.programme %} &middot; {{ entry.programme|titlecase }}{% endif %}
   </p>

@@ -84,6 +84,8 @@ repositories and no slides are all valid.
 | `photo` | the author's portrait, a file in the entry folder, e.g. `photo.jpg` |
 | `image` | a figure from the thesis, a file in the entry folder, e.g. `cover.png` |
 | `video` | a YouTube or Vimeo URL, e.g. `https://vimeo.com/76979871` |
+| `author_github` | the author's GitHub profile, e.g. `https://github.com/bgomezm` |
+| `author_linkedin` | the author's LinkedIn profile, e.g. `https://www.linkedin.com/in/bgomezm` |
 | `repos`, `slides` | as before |
 
 `supervisors` is no longer hand-entered: it is read from the
@@ -107,8 +109,8 @@ history.
 Re-pulls from Overleaf, recompiles, and re-reads the metadata.
 `summary.md` is **derived from the abstract and is rewritten on every
 sync** — do not hand-edit it; edit the thesis. Your own fields (`topics`,
-`score`, `honours`, `photo`, `image`, `video`, `repos`, `slides`) are
-preserved; `supervisors` is not — it is re-read from the source. If the
+`score`, `honours`, `photo`, `image`, `video`, `author_github`,
+`author_linkedin`, `repos`, `slides`) are preserved; `supervisors` is not — it is re-read from the source. If the
 thesis's year changes, `sync` updates the field and warns, but does not
 rename the folder: the slug is an identifier and shared URLs must keep
 working.

@@ -29,12 +29,17 @@ EMBED = {
     VIMEO: "https://player.vimeo.com/video/",
 }
 
+# The author's own profile, not a repo or company page.
+GITHUB_URL = re.compile(r"https://github\.com/[A-Za-z0-9-]+")
+LINKEDIN_URL = re.compile(r"https://(?:www\.)?linkedin\.com/in/[A-Za-z0-9_%-]+")
+
 DOC_NAME = {THESIS: "thesis.pdf", PUBLICATION: "paper.pdf"}
 
 MANDATORY = ("type", "title", "author", "year", "topics", "language")
 OPTIONAL = (
     "degree", "programme", "venue", "supervisors", "overleaf", "repos",
     "slides", "keywords", "score", "honours", "photo", "image", "video",
+    "author_github", "author_linkedin",
 )
 
 MAX_SCORE = 10
@@ -89,6 +94,8 @@ class Entry:
     photo: str | None = None
     image: str | None = None
     video: str | None = None
+    author_github: str | None = None
+    author_linkedin: str | None = None
     summary: str = ""   # summary.md's body, attached by the store
 
 
@@ -116,6 +123,8 @@ def from_dict(slug: str, data: dict) -> Entry:
     _check_filename(data, "slides")
     _check_filename(data, "image")
     _check_video(data)
+    _check_url(data, "author_github", GITHUB_URL, "GitHub profile")
+    _check_url(data, "author_linkedin", LINKEDIN_URL, "LinkedIn profile")
 
     return Entry(
         slug=slug,
@@ -138,6 +147,8 @@ def from_dict(slug: str, data: dict) -> Entry:
         photo=data.get("photo"),
         image=data.get("image"),
         video=data.get("video"),
+        author_github=data.get("author_github"),
+        author_linkedin=data.get("author_linkedin"),
     )
 
 
@@ -179,6 +190,8 @@ def to_dict(entry: Entry) -> dict:
     _put(out, "photo", entry.photo)
     _put(out, "image", entry.image)
     _put(out, "video", entry.video)
+    _put(out, "author_github", entry.author_github)
+    _put(out, "author_linkedin", entry.author_linkedin)
 
     return out
 
@@ -293,6 +306,17 @@ def _check_video(data: dict) -> None:
 
     if parse_video(data["video"]) is None:
         raise BadValue(f"video must be a YouTube or Vimeo URL, got {data['video']!r}")
+
+
+def _check_url(data: dict, name: str, pattern: re.Pattern, kind: str) -> None:
+    """A present optional field must be a URL matching the given host pattern."""
+    if name not in data:
+        return
+
+    value = data[name]
+
+    if not isinstance(value, str) or not pattern.fullmatch(value):
+        raise BadValue(f"{name} must be a {kind} URL, got {value!r}")
 
 
 def parse_video(url: str | None) -> Video | None:

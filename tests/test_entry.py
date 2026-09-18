@@ -327,3 +327,52 @@ def test_embed_url_is_built_from_the_id_alone():
 def test_parse_video_of_nothing_is_none():
     assert entry.parse_video(None) is None
     assert entry.parse_video("javascript:alert(1)") is None
+
+
+GITHUB_URL = "https://github.com/bgomezm"
+LINKEDIN_URL = "https://www.linkedin.com/in/bgomezm"
+
+
+def test_author_links_round_trip():
+    data = MINIMAL | {"author_github": GITHUB_URL, "author_linkedin": LINKEDIN_URL}
+
+    parsed = entry.from_dict("2027-x", data)
+
+    assert parsed.author_github == GITHUB_URL
+    assert parsed.author_linkedin == LINKEDIN_URL
+    assert entry.to_dict(parsed) == data
+
+
+def test_absent_author_links_are_none():
+    parsed = entry.from_dict("2027-x", MINIMAL)
+
+    assert parsed.author_github is None
+    assert parsed.author_linkedin is None
+
+
+@pytest.mark.parametrize("url", [
+    "https://gitlab.com/bgomezm",
+    "http://github.com/bgomezm",
+    "https://github.com/bgomezm/some-repo",
+    "javascript:alert(1)",
+    GITHUB_URL + "\n",
+])
+def test_author_github_rejects_anything_else(url):
+    with pytest.raises(BadValue, match="author_github"):
+        entry.from_dict("2027-x", MINIMAL | {"author_github": url})
+
+
+@pytest.mark.parametrize("url", [
+    "https://linkedin.com/company/ecl-strast",
+    "http://www.linkedin.com/in/bgomezm",
+    "https://facebook.com/bgomezm",
+    LINKEDIN_URL + "\n",
+])
+def test_author_linkedin_rejects_anything_else(url):
+    with pytest.raises(BadValue, match="author_linkedin"):
+        entry.from_dict("2027-x", MINIMAL | {"author_linkedin": url})
+
+
+def test_author_github_must_be_a_string():
+    with pytest.raises(BadValue, match="author_github"):
+        entry.from_dict("2027-x", MINIMAL | {"author_github": 42})

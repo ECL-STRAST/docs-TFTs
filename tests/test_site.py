@@ -248,6 +248,27 @@ def test_entry_page_omits_the_portrait_block_when_absent(repo):
     assert "portrait" not in page
 
 
+GITHUB_URL = "https://github.com/snieves"
+LINKEDIN_URL = "https://www.linkedin.com/in/snieves"
+
+
+def test_entry_page_shows_author_links_when_present(repo):
+    _entry(repo, "2027-x", FULL | {"author_github": GITHUB_URL, "author_linkedin": LINKEDIN_URL})
+
+    page = (_build(repo) / "entries" / "2027-x" / "index.html").read_text()
+
+    assert f'href="{GITHUB_URL}"' in page
+    assert f'href="{LINKEDIN_URL}"' in page
+
+
+def test_entry_page_omits_author_links_when_absent(repo):
+    _entry(repo, "2027-x", FULL)
+
+    page = (_build(repo) / "entries" / "2027-x" / "index.html").read_text()
+
+    assert "social" not in page
+
+
 def test_a_declared_photo_missing_from_disk_fails_the_build(repo):
     _entry(repo, "2027-x", FULL | {"photo": "photo.jpg"})
 
