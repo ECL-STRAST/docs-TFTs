@@ -32,6 +32,19 @@
     &middot; Matrícula de Honor{% endif %}</span></p>
   {% endif %}
 
+  {% if entry.image %}
+  <img class="thesis-image" src="{{ entry.image }}" alt="{{ entry.title }}">
+  {% endif %}
+
+  {# src is built from the parsed provider id, never from the stored URL:
+     entry.yaml arrives through pull requests. #}
+  {% if video %}
+  <div class="video">
+    <iframe src="{{ video.embed }}" title="{{ entry.title }}"
+            allowfullscreen loading="lazy"></iframe>
+  </div>
+  {% endif %}
+
   {% if entry.supervisors %}
   <p class="meta">Supervised by {{ entry.supervisors|join(", ") }}</p>
   {% endif %}

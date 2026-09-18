@@ -86,3 +86,10 @@ a { color: var(--ecl-blue); }
   font-size: .8rem;
   color: var(--dim);
 }
+
+/* The thesis's own figure, full column width: unlike the portrait it is
+   the content, not a decoration beside it. */
+.thesis-image { display: block; width: 100%; height: auto; margin: 1rem 0; }
+
+.video { margin: 1rem 0; }
+.video iframe { display: block; width: 100%; aspect-ratio: 16 / 9; border: 0; }

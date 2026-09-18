@@ -11,7 +11,7 @@ from jinja2 import Environment, PackageLoader, select_autoescape
 from . import store
 from .catalog import Catalog
 from .config import Config
-from .entry import DOC_NAME, Entry
+from .entry import DOC_NAME, Entry, parse_video
 from .errors import BadValue, UnsafeOutputDir
 
 SITE = "site"
@@ -148,7 +148,8 @@ class Site:
             shutil.copyfile(source / entry.image, folder / entry.image)
 
         page = self._jinja.get_template("entry.html").render(
-            entry=entry, doc=doc, summary=markdown.markdown(entry.summary),
+            entry=entry, doc=doc, video=parse_video(entry.video),
+            summary=markdown.markdown(entry.summary),
         )
         (folder / "index.html").write_text(page, encoding="utf-8")
 

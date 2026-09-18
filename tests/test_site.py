@@ -347,3 +347,58 @@ def test_the_card_meta_line_keeps_showing_the_degree_not_the_programme(repo):
 ])
 def test_titlecase_lowercases_spanish_connectives(raw, shown):
     assert titlecase(raw) == shown
+
+
+VIMEO_URL = "https://vimeo.com/76979871"
+YOUTUBE_URL = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+
+
+def _with_media(repo, slug="2027-x", video=YOUTUBE_URL):
+    folder = _entry(repo, slug, FULL | {"image": "cover.png", "video": video})
+    (folder / "cover.png").write_bytes(b"\x89PNG\r\n")
+
+    return folder
+
+
+def test_image_and_video_render_before_the_abstract(repo):
+    _with_media(repo)
+
+    page = (_build(repo) / "entries" / "2027-x" / "index.html").read_text()
+
+    assert page.index("thesis-image") < page.index('class="summary"')
+    assert page.index("<iframe") < page.index('class="summary"')
+
+
+def test_video_src_is_built_from_the_id_not_the_stored_url(repo):
+    _with_media(repo)
+
+    page = (_build(repo) / "entries" / "2027-x" / "index.html").read_text()
+
+    assert 'src="https://www.youtube.com/embed/dQw4w9WgXcQ"' in page
+    assert YOUTUBE_URL not in page
+
+
+def test_a_vimeo_video_uses_the_vimeo_player(repo):
+    _with_media(repo, video=VIMEO_URL)
+
+    page = (_build(repo) / "entries" / "2027-x" / "index.html").read_text()
+
+    assert 'src="https://player.vimeo.com/video/76979871"' in page
+
+
+def test_media_never_enters_the_index(repo):
+    _with_media(repo)
+
+    record = json.loads((_build(repo) / "index.json").read_text())[0]
+
+    assert "image" not in record
+    assert "video" not in record
+
+
+def test_entry_page_omits_the_media_blocks_when_absent(repo):
+    _entry(repo, "2027-x", FULL)
+
+    page = (_build(repo) / "entries" / "2027-x" / "index.html").read_text()
+
+    assert "thesis-image" not in page
+    assert "<iframe" not in page
