@@ -24,6 +24,7 @@
   <p class="meta">
     {{ entry.author }} &middot; {{ entry.year }} &middot; {{ entry.type }}
     {%- if entry.degree %} ({{ entry.degree }}){% endif %}
+    {%- if entry.programme %} &middot; {{ entry.programme|titlecase }}{% endif %}
   </p>
 
   {% if entry.score is not none %}

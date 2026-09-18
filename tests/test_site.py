@@ -6,7 +6,7 @@ import yaml
 from tft import config
 from tft.catalog import Catalog
 from tft.errors import BadValue, UnsafeOutputDir
-from tft.site import Site
+from tft.site import Site, titlecase
 
 MINIMAL = {
     "type": "thesis",
@@ -19,6 +19,7 @@ MINIMAL = {
 }
 
 FULL = MINIMAL | {
+    "programme": "GRADO EN INGENIERÍA BIOMÉDICA",
     "supervisors": ["Rodrigo Garcia Carmona"],
     "topics": ["biomechanics", "rehabilitation"],
     "keywords": ["motion capture", "c3d"],
@@ -76,6 +77,7 @@ def test_index_json_matches_the_golden_record(repo):
         "author": "Silvia Nieves Serrano",
         "year": 2027,
         "degree": "bachelor",
+        "programme": "GRADO EN INGENIERÍA BIOMÉDICA",
         "language": "en",
         "topics": ["biomechanics", "rehabilitation"],
         "supervisors": ["Rodrigo Garcia Carmona"],
@@ -99,6 +101,7 @@ def test_unfinished_entry_has_false_flags(repo):
     assert records[0]["has_code"] is False
     assert records[0]["has_slides"] is False
     assert records[0]["slides"] is None
+    assert records[0]["programme"] is None
 
 
 def test_documents_are_copied_next_to_the_page(repo):
@@ -306,3 +309,41 @@ def test_entry_page_carries_the_site_header(repo):
     assert 'href="../../"' in page
     # The header's home link replaces the old back link; it is not duplicated.
     assert "All entries" not in page
+
+
+def test_entry_page_shows_the_programme_title_cased(repo):
+    _entry(repo, "2027-x", FULL)
+
+    page = (_build(repo) / "entries" / "2027-x" / "index.html").read_text()
+
+    assert "Grado en Ingeniería Biomédica" in page
+    assert "GRADO EN INGENIERÍA BIOMÉDICA" not in page
+
+
+def test_entry_page_omits_the_programme_when_absent(repo):
+    _entry(repo, "2027-x", MINIMAL)
+
+    page = (_build(repo) / "entries" / "2027-x" / "index.html").read_text()
+
+    assert "Grado en" not in page
+
+
+def test_the_card_meta_line_keeps_showing_the_degree_not_the_programme(repo):
+    # The card's meta line is author · year · degree; a full programme
+    # name would wrap it on a phone. The programme stays searchable only.
+    _entry(repo, "2027-x", FULL)
+
+    record = json.loads((_build(repo) / "index.json").read_text())[0]
+
+    assert record["degree"] == "bachelor"
+    assert record["programme"] == "GRADO EN INGENIERÍA BIOMÉDICA"
+
+
+@pytest.mark.parametrize("raw,shown", [
+    ("GRADO EN INGENIERÍA BIOMÉDICA", "Grado en Ingeniería Biomédica"),
+    ("MÁSTER EN INGENIERÍA DE TELECOMUNICACIÓN", "Máster en Ingeniería de Telecomunicación"),
+    ("EN", "En"),
+    ("", ""),
+])
+def test_titlecase_lowercases_spanish_connectives(raw, shown):
+    assert titlecase(raw) == shown

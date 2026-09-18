@@ -64,3 +64,8 @@ def test_app_reads_the_score_and_keywords():
 
     assert "e.score" in source
     assert "e.keywords" in source
+
+
+def test_app_searches_the_programme():
+    # "biomédica" must find the thesis even though the card never shows it.
+    assert "e.programme" in APP_JS.read_text()

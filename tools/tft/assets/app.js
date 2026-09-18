@@ -24,7 +24,8 @@ function matches(e, f) {
   if (f.slides && !e.has_slides) return false;
   if (!f.q) return true;
 
-  const haystack = [e.title, e.author, e.summary, e.topics.join(" "), e.keywords.join(" ")]
+  const haystack = [e.title, e.author, e.summary, e.programme,
+                    e.topics.join(" "), e.keywords.join(" ")]
     .join(" ").toLowerCase();
   return haystack.includes(f.q);
 }

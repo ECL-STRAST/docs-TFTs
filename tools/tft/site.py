@@ -21,6 +21,22 @@ ASSETS = "assets"
 
 SUMMARY_LIMIT = 300
 
+# Spanish connectives stay lowercase inside a programme name, except
+# when the name starts with one.
+MINOR_WORDS = ("en", "de", "del", "la", "el", "los", "las", "y", "e")
+
+
+def titlecase(text: str) -> str:
+    """'GRADO EN INGENIERÍA BIOMÉDICA' -> 'Grado en Ingeniería Biomédica'."""
+    words = [word.lower() for word in text.split()]
+
+    if not words:
+        return ""
+
+    rest = [word if word in MINOR_WORDS else word.capitalize() for word in words[1:]]
+
+    return " ".join([words[0].capitalize(), *rest])
+
 
 def record(entry: Entry) -> dict:
     """The flat shape the client-side filter works with."""
@@ -33,6 +49,7 @@ def record(entry: Entry) -> dict:
         "author": entry.author,
         "year": entry.year,
         "degree": entry.degree,
+        "programme": entry.programme,
         "language": entry.language,
         "topics": list(entry.topics),
         "supervisors": list(entry.supervisors),
@@ -56,6 +73,7 @@ class Site:
             loader=PackageLoader("tft", "templates"),
             autoescape=select_autoescape(["html"]),
         )
+        self._jinja.filters["titlecase"] = titlecase
 
     def build(self, out: Path) -> None:
         """Render everything. The output directory is rebuilt from scratch."""
