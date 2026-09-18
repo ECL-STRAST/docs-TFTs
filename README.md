@@ -21,7 +21,7 @@ what makes an entry public; there is no flag to get wrong.
     python3 -m venv .venv
     source .venv/bin/activate
     python -m pip install -e ".[dev]"
-    export OVERLEAF_GIT_TOKEN=...          # never committed
+    export OVERLEAF_GIT_TOKEN=...
     git clone git@github.com:ECL-STRAST/docs-TFTs-private.git ../docs-TFTs-private
 
 `latexmk` and a TeX distribution are needed to add or sync entries, but not
@@ -75,6 +75,9 @@ nothing, and group repos may be private.
 
 Entries may be added before the work is defended: a draft PDF, no attached
 repositories and no slides are all valid.
+
+Don't forget to push to this repo after adding a new thesis or making any
+change to an existing one if you want the GitHub pages to update.
 
 ### Fields you fill in by hand
 
