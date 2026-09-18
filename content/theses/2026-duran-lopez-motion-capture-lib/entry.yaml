@@ -1,0 +1,30 @@
+type: thesis
+title: Design and development of a motion capture library for virtual reality devices
+author: Miguel Angel Durán Luque
+author_github: https://github.com/Migueldulu/
+author_linkedin: https://www.linkedin.com/in/miguel-angel-duran-luque-b782a3181/
+year: 2026
+degree: bachelor
+programme: GRADO EN INGENIERÍA BIOMÉDICA
+supervisors:
+- Rodrigo García Carmona
+topics:
+- biomechanics
+- rehabilitation
+- vr
+language: en
+overleaf:
+  project_id: 69383a90e04c1b8b944b73af
+  commit: 49081f7a9b5a25cbb97c872d1b4b3c18e7135f14
+  mirror: https://github.com/ECL-STRAST/docs-TFTs-private/tree/main/sources/theses/2026-duran-lopez-motion-capture-lib
+repos:
+  code:
+  - https://github.com/ECL-STRAST/LibreMotion-Capture
+score: 10
+keywords:
+- biomedical engineering
+- virtual reality
+- biomechanical data
+- motion capture
+- rehabilitation
+- software engineering
