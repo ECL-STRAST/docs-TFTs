@@ -45,14 +45,17 @@ run shell commands during compilation. Only compile sources you trust.
 
     tft add --overleaf <project-id> --name nieves-serrano-biomechanics-db
 
-Title, author, year, degree, summary and keywords are read from the LaTeX
-source. The year becomes the slug's prefix, so the entry lands in
-`content/theses/<year>-<name>/`.
+Title, author, year, degree, programme, supervisors, summary and keywords
+are read from the LaTeX source. The year becomes the slug's prefix, so
+the entry lands in `content/theses/<year>-<name>/`.
 
-Extraction reads the group's template: `\tfgtitle`, `\authorname` and
-`\fecha` in `main.tex`, the cover phrase (`TRABAJO FIN DE GRADO`,
-`... DE MÁSTER`, `TESIS DOCTORAL`), and the chapter holding
-`\chapter*{Abstract}` with its `\textbf{Keywords:}` line. A field it
+Extraction reads the group's template: `\tfgtitle`, `\authorname`,
+`\supervisor` and `\fecha` in `main.tex`, the cover phrase
+(`TRABAJO FIN DE GRADO`, `... DE MÁSTER`, `TESIS DOCTORAL`), the
+programme named just above it on the same page (`GRADO EN ...`,
+`MÁSTER EN ...`), and the chapter holding `\chapter*{Abstract}` with its
+`\textbf{Keywords:}` line. A thesis on another template simply has no
+programme; that is not an error and there is no flag for it. A field it
 cannot find aborts the command by name; `--title`, `--author`, `--year`
 and `--degree` supply one by hand for a thesis built on another template.
 
@@ -78,12 +81,24 @@ repositories and no slides are all valid.
 | `topics` | from `taxonomy/topics.yaml`; the only filter facet |
 | `score` | 0 to 10 |
 | `honours` | `true` for Matrícula de Honor; needs a `score` |
-| `photo` | a file in the entry folder, e.g. `photo.jpg` |
-| `repos`, `slides`, `supervisors` | as before |
+| `photo` | the author's portrait, a file in the entry folder, e.g. `photo.jpg` |
+| `image` | a figure from the thesis, a file in the entry folder, e.g. `cover.png` |
+| `video` | a YouTube or Vimeo URL, e.g. `https://vimeo.com/76979871` |
+| `repos`, `slides` | as before |
 
-A student's portrait is personal data. Get their written consent before
-committing one, and note that removing it later means rewriting this
-repository's history.
+`supervisors` is no longer hand-entered: it is read from the
+`\supervisor` macro and rewritten on every sync.
+
+Only three video URL shapes are accepted —
+`https://www.youtube.com/watch?v=<id>`, `https://youtu.be/<id>` and
+`https://vimeo.com/<digits>`. Anything else is rejected by `validate`.
+The stored URL is parsed into a provider id and never reaches the page's
+`iframe`, because `entry.yaml` arrives through pull requests.
+
+A student's portrait is personal data, and so is a recognisable student
+in an `image` or a `video`. Get their written consent before committing
+one, and note that removing it later means rewriting this repository's
+history.
 
 ### Keeping an entry current
 
@@ -92,10 +107,22 @@ repository's history.
 Re-pulls from Overleaf, recompiles, and re-reads the metadata.
 `summary.md` is **derived from the abstract and is rewritten on every
 sync** — do not hand-edit it; edit the thesis. Your own fields (`topics`,
-`score`, `honours`, `photo`, `repos`, `slides`) are preserved. If the
+`score`, `honours`, `photo`, `image`, `video`, `repos`, `slides`) are
+preserved; `supervisors` is not — it is re-read from the source. If the
 thesis's year changes, `sync` updates the field and warns, but does not
 rename the folder: the slug is an identifier and shared URLs must keep
 working.
+
+### Changing one field
+
+To change a field you own — a score, a photo, an image, a video — edit
+`content/theses/<slug>/entry.yaml` and run:
+
+    tft validate && tft build
+
+Do **not** use `tft sync` for this. Sync re-pulls from Overleaf and
+recompiles the LaTeX; it is for picking up changes to the thesis itself,
+not for applying your own edits.
 
 ## Other commands
 
