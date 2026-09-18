@@ -294,3 +294,15 @@ def test_a_declared_image_missing_from_disk_fails_the_build(repo):
         _build(repo)
 
     assert (out / "sentinel.html").read_text() == "kept"
+
+
+def test_entry_page_carries_the_site_header(repo):
+    _entry(repo, "2027-x", FULL)
+
+    page = (_build(repo) / "entries" / "2027-x" / "index.html").read_text()
+
+    assert 'src="../../assets/ecl-logo.png"' in page
+    assert 'class="rule"' in page
+    assert 'href="../../"' in page
+    # The header's home link replaces the old back link; it is not duplicated.
+    assert "All entries" not in page
