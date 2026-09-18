@@ -4,6 +4,7 @@ title: Design and development of an environment for the visualization of biomech
 author: Belén Gómez Martínez
 year: 2026
 degree: bachelor
+programme: GRADO EN INGENIERÍA BIOMÉDICA
 supervisors:
 - Rodrigo García Carmona
 topics:
@@ -18,6 +19,7 @@ overleaf:
 repos:
   code:
   - https://github.com/ECL-STRAST/libremotion-chloe
+score: 10
 keywords:
 - biomedical engineering
 - biomechanics
@@ -27,4 +29,3 @@ keywords:
 - data visualization
 - analog data
 - physiotherapy
-score: 10
