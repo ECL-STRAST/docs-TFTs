@@ -18,6 +18,8 @@ what makes an entry public; there is no flag to get wrong.
 
 ## Setup
 
+    python3 -m venv .venv
+    source .venv/bin/activate
     python -m pip install -e ".[dev]"
     export OVERLEAF_GIT_TOKEN=...          # never committed
     git clone git@github.com:ECL-STRAST/docs-TFTs-private.git ../docs-TFTs-private
