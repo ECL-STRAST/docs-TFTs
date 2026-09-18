@@ -20,6 +20,7 @@ overleaf:
 repos:
   code:
   - https://github.com/ECL-STRAST/LibreMotion-Capture
+image: libremotion-capture.jpg
 score: 10
 keywords:
 - biomedical engineering
