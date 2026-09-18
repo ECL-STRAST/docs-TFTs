@@ -2,6 +2,9 @@ type: thesis
 title: Design and development of an environment for the visualization of biomechanical
   information of physiotherapy patients
 author: Belén Gómez Martínez
+author_github: https://github.com/belengomezmartinez/
+author_linkedin: https://www.linkedin.com/in/belen-gomez-martinez/
+photo: photo.jpg
 year: 2026
 degree: bachelor
 programme: GRADO EN INGENIERÍA BIOMÉDICA
@@ -10,7 +13,7 @@ supervisors:
 topics:
 - biomechanics
 - rehabilitation
-- signal-processing
+- medical-training
 language: en
 overleaf:
   project_id: 69383a49689691250738bac6
@@ -19,6 +22,7 @@ overleaf:
 repos:
   code:
   - https://github.com/ECL-STRAST/libremotion-chloe
+slides: slides.pdf
 score: 10
 keywords:
 - biomedical engineering
