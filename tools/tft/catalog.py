@@ -39,8 +39,8 @@ class Catalog:
     def dir_for(self, entry: Entry) -> Path:
         return self._content(COLLECTIONS[entry.type]) / entry.slug
 
-    def create(self, slug, type, year, title, author,
-               degree=None, keywords=(), summary=STUB_SUMMARY) -> Path:
+    def create(self, slug, type, year, title, author, degree=None,
+               programme=None, supervisors=(), keywords=(), summary=STUB_SUMMARY) -> Path:
         """Scaffold a new entry folder with stubs for the human to fill in."""
         folder = self._content(COLLECTIONS[type]) / slug
 
@@ -54,6 +54,12 @@ class Catalog:
 
         if degree is not None:
             data["degree"] = degree
+
+        if programme is not None:
+            data["programme"] = programme
+
+        if supervisors:
+            data["supervisors"] = list(supervisors)
 
         if keywords:
             data["keywords"] = list(keywords)

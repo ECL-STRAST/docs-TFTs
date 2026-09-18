@@ -27,7 +27,9 @@ def repo(tmp_path):
 MAIN = r"""
 \newcommand{\authorname}{Silvia Nieves Serrano}
 \newcommand{\tfgtitle}{A database for biomechanical data}
+\newcommand{\supervisor}{Rodrigo García Carmona, Ana Pérez Ruiz}
 \newcommand{\fecha}{Junio 2027}
+GRADO EN INGENIERÍA BIOMÉDICA
 TRABAJO FIN DE GRADO
 \documentclass{article}
 \begin{document}x\end{document}
@@ -367,6 +369,8 @@ def test_sync_preserves_human_owned_fields(repo):
     data["score"] = 10
     data["honours"] = True
     data["slides"] = "slides.pdf"
+    data["image"] = "cover.png"
+    data["video"] = "https://vimeo.com/76979871"
     (folder / "entry.yaml").write_text(yaml.safe_dump(data, sort_keys=False))
 
     _synced(repo, folder)
@@ -376,6 +380,66 @@ def test_sync_preserves_human_owned_fields(repo):
     assert after["score"] == 10
     assert after["honours"] is True
     assert after["slides"] == "slides.pdf"
+    assert after["image"] == "cover.png"
+    assert after["video"] == "https://vimeo.com/76979871"
+
+
+def test_add_records_the_programme_and_supervisors(repo):
+    folder = _add(repo, _ingest(repo))
+    data = yaml.safe_load((folder / "entry.yaml").read_text())
+
+    assert data["programme"] == "GRADO EN INGENIERÍA BIOMÉDICA"
+    assert data["supervisors"] == ["Rodrigo García Carmona", "Ana Pérez Ruiz"]
+
+
+def test_add_without_a_programme_omits_the_field(repo):
+    main = MAIN.replace("GRADO EN INGENIERÍA BIOMÉDICA\n", "")
+    folder = _add(repo, _ingest(repo, main=main))
+    data = yaml.safe_load((folder / "entry.yaml").read_text())
+
+    assert "programme" not in data
+
+
+def test_sync_backfills_the_programme_and_supervisors(repo):
+    folder = _add(repo, _ingest(repo))
+    data = yaml.safe_load((folder / "entry.yaml").read_text())
+    del data["programme"]
+    del data["supervisors"]
+    (folder / "entry.yaml").write_text(yaml.safe_dump(data, sort_keys=False))
+
+    _synced(repo, folder)
+    after = yaml.safe_load((folder / "entry.yaml").read_text())
+
+    assert after["programme"] == "GRADO EN INGENIERÍA BIOMÉDICA"
+    assert after["supervisors"] == ["Rodrigo García Carmona", "Ana Pérez Ruiz"]
+
+
+def test_sync_overwrites_hand_entered_supervisors(repo):
+    # supervisors is derived now: the \supervisor macro is the whole list,
+    # so a re-sync replacing it cannot lose a co-supervisor.
+    folder = _add(repo, _ingest(repo))
+    moved = MAIN.replace(
+        "Rodrigo García Carmona, Ana Pérez Ruiz", "Rodrigo García Carmona",
+    )
+
+    _synced(repo, folder, main=moved)
+    after = yaml.safe_load((folder / "entry.yaml").read_text())
+
+    assert after["supervisors"] == ["Rodrigo García Carmona"]
+
+
+def test_a_publication_gets_no_programme(repo):
+    bare = "\\documentclass{article}\\begin{document}x\\end{document}"
+    ingest = _ingest(repo, main=bare, abstract=None)
+
+    folder = ingest.add(
+        project_id=PROJECT, name="garcia-paper",
+        overrides=Overrides(title="A Paper", author="X. Garcia", year=2027),
+        type=PUBLICATION,
+    )
+    data = yaml.safe_load((folder / "entry.yaml").read_text())
+
+    assert "programme" not in data
 
 
 def test_sync_warns_but_does_not_rename_on_a_year_change(repo):

@@ -59,6 +59,7 @@ class Ingest:
         folder = self._catalog.create(
             slug=slug, type=type, year=meta.year, title=meta.title,
             author=meta.author, degree=_degree_for(type, meta),
+            programme=meta.programme, supervisors=meta.supervisors,
             keywords=meta.keywords, summary=meta.abstract or STUB_SUMMARY,
         )
         entry = self._catalog.find(slug)
@@ -87,7 +88,8 @@ class Ingest:
 
         refreshed = dataclasses.replace(
             entry, title=meta.title, author=meta.author, year=meta.year,
-            degree=_degree_for(entry.type, meta), keywords=meta.keywords,
+            degree=_degree_for(entry.type, meta), programme=meta.programme,
+            supervisors=meta.supervisors, keywords=meta.keywords,
         )
         self._install(refreshed, folder, pdf, work, sha, project_id)
 
