@@ -37,6 +37,7 @@ def test_unbalanced_braces_are_reported():
 def test_meta_is_frozen():
     meta = tex.Meta(
         title="t", author="a", year=2026, degree="bachelor",
+        programme="GRADO EN INGENIERÍA BIOMÉDICA", supervisors=("R. García",),
         abstract="text", keywords=("gait",),
     )
 
@@ -110,6 +111,7 @@ It reads \textbf{C3D \emph{marker}} data and renders it in a browser.
 FULL_MAIN = r"""
 \newcommand{\authorname}{Belén Gómez Martínez}
 \newcommand{\tfgtitle}{Design and development of an environment}
+\newcommand{\supervisor}{Rodrigo García Carmona}
 \newcommand{\fecha}{Junio 2026}
 TRABAJO FIN DE GRADO
 """
@@ -166,6 +168,8 @@ def test_missing_pieces_are_none_not_errors(tmp_path):
     assert meta.author is None
     assert meta.year is None
     assert meta.degree is None
+    assert meta.programme is None
+    assert meta.supervisors == ()
     assert meta.abstract is None
     assert meta.keywords == ()
 
@@ -207,5 +211,113 @@ def test_read_without_a_main_tex_returns_all_none(tmp_path):
     assert meta.author is None
     assert meta.year is None
     assert meta.degree is None
+    assert meta.programme is None
+    assert meta.supervisors == ()
     assert meta.abstract is None
     assert meta.keywords == ()
+
+
+COVER = r"""
+\begin{center}
+    {\Large\rm \textbf{ GRADO EN INGENIERÍA BIOMÉDICA}} \\
+    \vspace{2.0cm}
+    {\Large\rm \textbf{TRABAJO FIN DE GRADO}} \\
+\end{center}
+"""
+
+
+def test_programme_is_read_from_the_cover_with_its_accents(tmp_path):
+    src = _tree(tmp_path, **{"main.tex": FULL_MAIN, "chapters/0-preamble.tex": COVER})
+
+    assert tex.read(src).programme == "GRADO EN INGENIERÍA BIOMÉDICA"
+
+
+def test_master_programme_is_read(tmp_path):
+    cover = "MÁSTER EN INGENIERÍA BIOMÉDICA\nTRABAJO FIN DE MÁSTER\n"
+    src = _tree(tmp_path, **{"main.tex": cover})
+
+    assert tex.read(src).programme == "MÁSTER EN INGENIERÍA BIOMÉDICA"
+
+
+def test_no_programme_on_the_cover_is_none(tmp_path):
+    src = _tree(tmp_path, **{"main.tex": "TRABAJO FIN DE GRADO"})
+
+    assert tex.read(src).programme is None
+
+
+def test_no_cover_at_all_is_no_programme(tmp_path):
+    src = _tree(tmp_path, **{"main.tex": "nothing relevant here"})
+
+    assert tex.read(src).programme is None
+
+
+def test_two_programmes_on_the_cover_are_ambiguous(tmp_path):
+    cover = (
+        "GRADO EN INGENIERÍA BIOMÉDICA\n"
+        "GRADO EN INGENIERÍA DE SISTEMAS\n"
+        "TRABAJO FIN DE GRADO\n"
+    )
+    src = _tree(tmp_path, **{"main.tex": cover})
+
+    with pytest.raises(ExtractError, match="ambiguous"):
+        tex.read(src)
+
+
+def test_the_same_programme_twice_is_not_ambiguous(tmp_path):
+    cover = "GRADO EN INGENIERÍA BIOMÉDICA\nTRABAJO FIN DE GRADO\nGrado en Ingeniería Biomédica\n"
+    src = _tree(tmp_path, **{"main.tex": cover})
+
+    assert tex.read(src).programme == "GRADO EN INGENIERÍA BIOMÉDICA"
+
+
+def test_body_prose_outside_the_cover_is_not_a_programme(tmp_path):
+    # The pattern is case-insensitive, so "el grado en ..." in a chapter
+    # would match; only the file carrying the degree phrase is searched.
+    src = _tree(
+        tmp_path,
+        **{
+            "main.tex": "TRABAJO FIN DE GRADO",
+            "chapters/1-intro.tex": "Durante el grado en ingeniería de sistemas se estudia...",
+        },
+    )
+
+    assert tex.read(src).programme is None
+
+
+def test_supervisors_split_on_commas(tmp_path):
+    main = r"\newcommand{\supervisor}{Rodrigo García Carmona, Ana Pérez Ruiz}"
+    src = _tree(tmp_path, **{"main.tex": main})
+
+    assert tex.read(src).supervisors == ("Rodrigo García Carmona", "Ana Pérez Ruiz")
+
+
+def test_supervisors_split_on_newlines_and_latex_line_breaks(tmp_path):
+    main = "\\newcommand{\\supervisor}{Rodrigo García Carmona \\\\\nAna Pérez Ruiz}"
+    src = _tree(tmp_path, **{"main.tex": main})
+
+    assert tex.read(src).supervisors == ("Rodrigo García Carmona", "Ana Pérez Ruiz")
+
+
+def test_one_supervisor_is_a_one_element_tuple(tmp_path):
+    src = _tree(tmp_path, **{"main.tex": r"\newcommand{\supervisor}{Rodrigo García Carmona}"})
+
+    assert tex.read(src).supervisors == ("Rodrigo García Carmona",)
+
+
+def test_supervisor_names_are_de_texed(tmp_path):
+    main = r"\newcommand{\supervisor}{\textbf{Rodrigo} García Carmona}"
+    src = _tree(tmp_path, **{"main.tex": main})
+
+    assert tex.read(src).supervisors == ("Rodrigo García Carmona",)
+
+
+def test_no_supervisor_macro_yields_an_empty_tuple(tmp_path):
+    src = _tree(tmp_path, **{"main.tex": "TRABAJO FIN DE GRADO"})
+
+    assert tex.read(src).supervisors == ()
+
+
+def test_degree_value_and_error_survive_the_cover_refactor(tmp_path):
+    src = _tree(tmp_path, **{"chapters/0-preamble.tex": "TRABAJO FIN DE GRADO"})
+
+    assert tex.degree(src) == "bachelor"

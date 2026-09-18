@@ -16,6 +16,7 @@ from .errors import ExtractError
 TITLE_MACRO = "tfgtitle"
 AUTHOR_MACRO = "authorname"
 DATE_MACRO = "fecha"
+SUPERVISOR_MACRO = "supervisor"
 
 # Cover-page phrases, matched against accent-folded uppercase text so
 # "Máster", "MASTER" and "máster" are one case.
@@ -24,6 +25,14 @@ DEGREES = (
     (re.compile(r"TRABAJO (?:DE )?FIN DE MASTER"), "master"),
     (re.compile(r"TESIS DOCTORAL"), "phd"),
 )
+
+# The programme sits immediately above the degree phrase on the ETSIT
+# cover. Matched against the ORIGINAL text, not the accent-folded text
+# used for the degree, so "INGENIERÍA BIOMÉDICA" keeps its accents.
+PROGRAMME = re.compile(r"(?:GRADO|M[ÁA]STER)\s+EN\s+([^\\}\n]+)", re.IGNORECASE)
+
+# \supervisor holds the whole list, however the student separated it.
+SUPERVISOR_SPLIT = re.compile(r",|\\\\|\n")
 
 TEX_GLOB = "*.tex"
 
@@ -51,6 +60,8 @@ class Meta:
     author: str | None
     year: int | None
     degree: str | None
+    programme: str | None
+    supervisors: tuple[str, ...]
     abstract: str | None
     keywords: tuple[str, ...]
 
@@ -91,17 +102,65 @@ def braced(text: str, open_at: int) -> tuple[str, int]:
 
 def degree(src: Path) -> str | None:
     """The degree named on the cover, or None when no phrase appears."""
-    found = set()
+    return _cover(src)[0]
+
+
+def _cover(src: Path) -> tuple[str | None, Path | None]:
+    """The degree named on the cover, and the file that names it.
+
+    The file is what scopes the programme search: the programme belongs
+    on the cover, and the cover is whatever file carries the phrase.
+    """
+    found: dict[str, Path] = {}
 
     for path in sorted(src.rglob(TEX_GLOB)):
         text = fold(path.read_text(encoding="utf-8", errors="ignore"))
-        found |= {name for pattern, name in DEGREES if pattern.search(text)}
+
+        for pattern, name in DEGREES:
+            if pattern.search(text):
+                found.setdefault(name, path)
 
     # Two different phrases means a stray citation, not a second degree.
     if len(found) > 1:
         raise ExtractError(f"degree is ambiguous ({', '.join(sorted(found))}); pass --degree")
 
-    return found.pop() if found else None
+    if not found:
+        return None, None
+
+    name = next(iter(found))
+
+    return name, found[name]
+
+
+def _programme(path: Path | None) -> str | None:
+    """The degree programme named on the cover file, accents intact."""
+    if path is None:
+        return None
+
+    text = path.read_text(encoding="utf-8", errors="ignore")
+    found: dict[str, str] = {}
+
+    # Keyed on the folded phrase so "GRADO EN X" and "Grado en X" are one.
+    for match in PROGRAMME.finditer(text):
+        phrase = " ".join(match.group().split())
+        found.setdefault(fold(phrase), phrase)
+
+    if len(found) > 1:
+        raise ExtractError(f"programme is ambiguous ({', '.join(sorted(found.values()))})")
+
+    return next(iter(found.values()), None)
+
+
+def _supervisors(main: str) -> tuple[str, ...]:
+    """Every name in \\supervisor, comma-, newline- or \\\\-separated."""
+    raw = macro(main, SUPERVISOR_MACRO)
+
+    if raw is None:
+        return ()
+
+    names = [detex(part).strip() for part in SUPERVISOR_SPLIT.split(raw)]
+
+    return tuple(name for name in names if name)
 
 
 def fold(text: str) -> str:
@@ -129,12 +188,15 @@ def read(src: Path) -> Meta:
     main = path.read_text(encoding="utf-8", errors="ignore") if path.is_file() else ""
     abstract, keywords = _abstract(src)
     year = YEAR.search(macro(main, DATE_MACRO) or "")
+    named, cover = _cover(src)
 
     return Meta(
         title=macro(main, TITLE_MACRO),
         author=macro(main, AUTHOR_MACRO),
         year=int(year.group()) if year else None,
-        degree=degree(src),
+        degree=named,
+        programme=_programme(cover),
+        supervisors=_supervisors(main),
         abstract=abstract,
         keywords=keywords,
     )
