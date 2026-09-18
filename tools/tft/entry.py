@@ -1,5 +1,6 @@
 """The catalog's domain type and the rules an entry.yaml must satisfy."""
 
+import re
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -11,17 +12,45 @@ TYPES = (THESIS, PUBLICATION)
 
 DEGREES = ("bachelor", "master", "phd")
 
+YOUTUBE = "youtube"
+VIMEO = "vimeo"
+
+# The only URL shapes an entry.yaml may name, and the id each yields.
+# entry.yaml is repo content arriving through pull requests, so the
+# stored URL is parsed, never interpolated into the iframe src.
+VIDEO_URLS = (
+    (re.compile(r"^https://(?:www\.)?youtube\.com/watch\?v=([A-Za-z0-9_-]+)$"), YOUTUBE),
+    (re.compile(r"^https://youtu\.be/([A-Za-z0-9_-]+)$"), YOUTUBE),
+    (re.compile(r"^https://(?:www\.)?vimeo\.com/(\d+)$"), VIMEO),
+)
+
+EMBED = {
+    YOUTUBE: "https://www.youtube.com/embed/",
+    VIMEO: "https://player.vimeo.com/video/",
+}
+
 DOC_NAME = {THESIS: "thesis.pdf", PUBLICATION: "paper.pdf"}
 
 MANDATORY = ("type", "title", "author", "year", "topics", "language")
 OPTIONAL = (
-    "degree", "venue", "supervisors", "overleaf", "repos", "slides",
-    "keywords", "score", "honours", "photo",
+    "degree", "programme", "venue", "supervisors", "overleaf", "repos",
+    "slides", "keywords", "score", "honours", "photo", "image", "video",
 )
 
 MAX_SCORE = 10
 
 TEXT_FIELDS = ("title", "author", "language")
+
+
+@dataclass(frozen=True)
+class Video:
+    host: str
+    id: str
+
+    @property
+    def embed(self) -> str:
+        """Built from a fixed base and the id: the stored URL never reaches the page."""
+        return EMBED[self.host] + self.id
 
 
 @dataclass(frozen=True)
@@ -48,6 +77,7 @@ class Entry:
     topics: tuple[str, ...]
     language: str
     degree: str | None = None
+    programme: str | None = None
     venue: str | None = None
     supervisors: tuple[str, ...] = ()
     overleaf: Overleaf | None = None
@@ -57,6 +87,8 @@ class Entry:
     score: float | None = None
     honours: bool = False
     photo: str | None = None
+    image: str | None = None
+    video: str | None = None
     summary: str = ""   # summary.md's body, attached by the store
 
 
@@ -78,8 +110,11 @@ def from_dict(slug: str, data: dict) -> Entry:
     _check_types(data)
     _check_score(data)
     _check_keywords(data)
+    _check_text(data, "programme")
     _check_filename(data, "photo")
     _check_filename(data, "slides")
+    _check_filename(data, "image")
+    _check_video(data)
 
     return Entry(
         slug=slug,
@@ -90,6 +125,7 @@ def from_dict(slug: str, data: dict) -> Entry:
         topics=tuple(data["topics"]),
         language=data["language"],
         degree=data.get("degree"),
+        programme=data.get("programme"),
         venue=data.get("venue"),
         supervisors=tuple(data.get("supervisors", ())),
         overleaf=_overleaf(data.get("overleaf")),
@@ -99,6 +135,8 @@ def from_dict(slug: str, data: dict) -> Entry:
         score=data.get("score"),
         honours=bool(data.get("honours", False)),
         photo=data.get("photo"),
+        image=data.get("image"),
+        video=data.get("video"),
     )
 
 
@@ -112,6 +150,7 @@ def to_dict(entry: Entry) -> dict:
     }
 
     _put(out, "degree", entry.degree)
+    _put(out, "programme", entry.programme)
     _put(out, "venue", entry.venue)
     _put(out, "supervisors", list(entry.supervisors))
 
@@ -137,6 +176,8 @@ def to_dict(entry: Entry) -> dict:
     _put(out, "honours", entry.honours)
     _put(out, "keywords", list(entry.keywords))
     _put(out, "photo", entry.photo)
+    _put(out, "image", entry.image)
+    _put(out, "video", entry.video)
 
     return out
 
@@ -206,8 +247,8 @@ def _check_keywords(data: dict) -> None:
             raise BadValue("keywords must be non-empty strings")
 
 
-def _check_filename(data: dict, name: str) -> None:
-    """A declared file (photo, slides) must be a bare name in the folder."""
+def _check_text(data: dict, name: str) -> None:
+    """A present optional string must actually carry something."""
     value = data.get(name)
 
     if value is None:
@@ -216,8 +257,40 @@ def _check_filename(data: dict, name: str) -> None:
     if not isinstance(value, str) or not value.strip():
         raise BadValue(f"{name} must be a non-empty string")
 
+
+def _check_filename(data: dict, name: str) -> None:
+    """A declared file (photo, slides, image) must be a bare name in the folder."""
+    _check_text(data, name)
+    value = data.get(name)
+
+    if value is None:
+        return
+
     if "/" in value or "\\" in value or ".." in value:
         raise BadValue(f"{name} must not contain a path separator")
+
+
+def _check_video(data: dict) -> None:
+    """A video is a URL on an allowed host, parseable to an id."""
+    if "video" not in data:
+        return
+
+    if parse_video(data["video"]) is None:
+        raise BadValue(f"video must be a YouTube or Vimeo URL, got {data['video']!r}")
+
+
+def parse_video(url: str | None) -> Video | None:
+    """The host and id behind an allowed video URL, else None."""
+    if not isinstance(url, str):
+        return None
+
+    for pattern, host in VIDEO_URLS:
+        match = pattern.match(url)
+
+        if match:
+            return Video(host=host, id=match.group(1))
+
+    return None
 
 
 def _overleaf(raw: dict | None) -> Overleaf | None:

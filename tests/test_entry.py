@@ -203,3 +203,105 @@ def test_photo_must_not_traverse_out_of_the_entry():
 def test_slides_must_not_traverse_out_of_the_entry():
     with pytest.raises(BadValue, match="slides"):
         entry.from_dict("2027-x", MINIMAL | {"slides": "../secret.pdf"})
+
+
+YOUTUBE_URL = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+SHORT_URL = "https://youtu.be/dQw4w9WgXcQ"
+VIMEO_URL = "https://vimeo.com/76979871"
+
+
+def test_programme_round_trips():
+    data = MINIMAL | {"programme": "GRADO EN INGENIERÍA BIOMÉDICA"}
+
+    parsed = entry.from_dict("2027-x", data)
+
+    assert parsed.programme == "GRADO EN INGENIERÍA BIOMÉDICA"
+    assert entry.to_dict(parsed) == data
+
+
+def test_absent_programme_is_none():
+    assert entry.from_dict("2027-x", MINIMAL).programme is None
+
+
+def test_programme_must_be_a_non_empty_string():
+    with pytest.raises(BadValue, match="programme"):
+        entry.from_dict("2027-x", MINIMAL | {"programme": "  "})
+
+
+def test_programme_must_be_a_string():
+    with pytest.raises(BadValue, match="programme"):
+        entry.from_dict("2027-x", MINIMAL | {"programme": 7})
+
+
+def test_image_and_video_round_trip():
+    data = MINIMAL | {"image": "cover.png", "video": YOUTUBE_URL}
+
+    parsed = entry.from_dict("2027-x", data)
+
+    assert parsed.image == "cover.png"
+    assert parsed.video == YOUTUBE_URL
+    assert entry.to_dict(parsed) == data
+
+
+def test_absent_image_and_video_are_none():
+    parsed = entry.from_dict("2027-x", MINIMAL)
+
+    assert parsed.image is None
+    assert parsed.video is None
+
+
+def test_image_must_be_a_string():
+    with pytest.raises(BadValue, match="image"):
+        entry.from_dict("2027-x", MINIMAL | {"image": 123})
+
+
+def test_image_must_not_be_blank():
+    with pytest.raises(BadValue, match="image"):
+        entry.from_dict("2027-x", MINIMAL | {"image": "  "})
+
+
+def test_image_must_not_traverse_out_of_the_entry():
+    with pytest.raises(BadValue, match="image"):
+        entry.from_dict("2027-x", MINIMAL | {"image": "../../secret.png"})
+
+
+@pytest.mark.parametrize("url,host,id", [
+    (YOUTUBE_URL, entry.YOUTUBE, "dQw4w9WgXcQ"),
+    ("https://youtube.com/watch?v=dQw4w9WgXcQ", entry.YOUTUBE, "dQw4w9WgXcQ"),
+    (SHORT_URL, entry.YOUTUBE, "dQw4w9WgXcQ"),
+    (VIMEO_URL, entry.VIMEO, "76979871"),
+])
+def test_video_accepts_each_allowed_form(url, host, id):
+    parsed = entry.from_dict("2027-x", MINIMAL | {"video": url})
+
+    assert parsed.video == url
+    assert entry.parse_video(url) == entry.Video(host=host, id=id)
+
+
+@pytest.mark.parametrize("url", [
+    "https://evil.example.com/watch?v=dQw4w9WgXcQ",
+    "javascript:alert(1)",
+    "http://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    "https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=30",
+    "https://vimeo.com/not-a-number",
+    "https://www.youtube.com/watch?v=",
+    "dQw4w9WgXcQ",
+])
+def test_video_rejects_anything_else(url):
+    with pytest.raises(BadValue, match="video"):
+        entry.from_dict("2027-x", MINIMAL | {"video": url})
+
+
+def test_video_must_be_a_string():
+    with pytest.raises(BadValue, match="video"):
+        entry.from_dict("2027-x", MINIMAL | {"video": 42})
+
+
+def test_embed_url_is_built_from_the_id_alone():
+    assert entry.parse_video(YOUTUBE_URL).embed == "https://www.youtube.com/embed/dQw4w9WgXcQ"
+    assert entry.parse_video(VIMEO_URL).embed == "https://player.vimeo.com/video/76979871"
+
+
+def test_parse_video_of_nothing_is_none():
+    assert entry.parse_video(None) is None
+    assert entry.parse_video("javascript:alert(1)") is None
