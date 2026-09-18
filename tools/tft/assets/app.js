@@ -39,7 +39,8 @@ function badge(e) {
 
 function card(e) {
   const degree = e.degree ? ` &middot; ${escape(e.degree)}` : "";
-  const topics = e.topics.map((t) => `<span>${escape(t)}</span>`).join("");
+  const topics = e.topics.map((t) =>
+    `<a href="?topic=${encodeURIComponent(t)}">${escape(t)}</a>`).join("");
 
   return `<li>
     <a href="${escape(e.url)}">${escape(e.title)}</a>
@@ -64,6 +65,11 @@ fetch("index.json")
   .then((response) => response.json())
   .then((data) => {
     entries = data;
+
+    // A topic link (from a card or an entry page) arrives as ?topic=...
+    const topic = new URLSearchParams(location.search).get("topic");
+    if (topic) document.getElementById("topic").value = topic;
+
     CONTROLS.forEach((id) => {
       document.getElementById(id).addEventListener("input", render);
     });

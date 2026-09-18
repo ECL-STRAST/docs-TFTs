@@ -56,7 +56,7 @@
   <p class="meta">Supervised by {{ entry.supervisors|join(", ") }}</p>
   {% endif %}
 
-  <p class="topics">{% for topic in entry.topics %}<span>{{ topic }}</span>{% endfor %}</p>
+  <p class="topics">{% for topic in entry.topics %}<a href="../../?topic={{ topic|urlencode }}">{{ topic }}</a>{% endfor %}</p>
 
   {% if entry.keywords %}
   <p class="keywords">{% for word in entry.keywords %}<span>{{ word }}</span>{% endfor %}</p>

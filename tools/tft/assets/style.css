@@ -29,7 +29,7 @@ h1 { font-size: 1.6rem; margin-bottom: .2rem; }
 #results a { font-weight: 600; text-decoration: none; color: var(--ink); }
 #results a:hover { text-decoration: underline; }
 
-.topics span {
+.topics a {
   display: inline-block;
   margin: 0 .3rem .3rem 0;
   padding: .1rem .5rem;
@@ -37,7 +37,9 @@ h1 { font-size: 1.6rem; margin-bottom: .2rem; }
   border-radius: 1rem;
   font-size: .8rem;
   color: var(--dim);
+  text-decoration: none;
 }
+.topics a:hover { color: var(--ecl-blue); border-color: var(--ecl-blue); }
 
 /* Header: the mark, the title, and one gradient hairline echoing it. */
 header { display: flex; align-items: center; gap: .75rem; }
