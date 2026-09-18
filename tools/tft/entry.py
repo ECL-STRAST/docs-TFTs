@@ -19,9 +19,9 @@ VIMEO = "vimeo"
 # entry.yaml is repo content arriving through pull requests, so the
 # stored URL is parsed, never interpolated into the iframe src.
 VIDEO_URLS = (
-    (re.compile(r"^https://(?:www\.)?youtube\.com/watch\?v=([A-Za-z0-9_-]+)$"), YOUTUBE),
-    (re.compile(r"^https://youtu\.be/([A-Za-z0-9_-]+)$"), YOUTUBE),
-    (re.compile(r"^https://(?:www\.)?vimeo\.com/(\d+)$"), VIMEO),
+    (re.compile(r"https://(?:www\.)?youtube\.com/watch\?v=([A-Za-z0-9_-]+)"), YOUTUBE),
+    (re.compile(r"https://youtu\.be/([A-Za-z0-9_-]+)"), YOUTUBE),
+    (re.compile(r"https://(?:www\.)?vimeo\.com/(\d+)"), VIMEO),
 )
 
 EMBED = {
@@ -110,6 +110,7 @@ def from_dict(slug: str, data: dict) -> Entry:
     _check_types(data)
     _check_score(data)
     _check_keywords(data)
+    _check_supervisors(data)
     _check_text(data, "programme")
     _check_filename(data, "photo")
     _check_filename(data, "slides")
@@ -247,6 +248,21 @@ def _check_keywords(data: dict) -> None:
             raise BadValue("keywords must be non-empty strings")
 
 
+def _check_supervisors(data: dict) -> None:
+    if "supervisors" not in data:
+        return
+
+    supervisors = data["supervisors"]
+
+    # Unlike keywords, empty is fine: tex yields () when there is no \supervisor.
+    if not isinstance(supervisors, list):
+        raise BadValue("supervisors must be a list")
+
+    for name in supervisors:
+        if not isinstance(name, str) or not name.strip():
+            raise BadValue("supervisors must be non-empty strings")
+
+
 def _check_text(data: dict, name: str) -> None:
     """A present optional string must actually carry something."""
     value = data.get(name)
@@ -285,7 +301,7 @@ def parse_video(url: str | None) -> Video | None:
         return None
 
     for pattern, host in VIDEO_URLS:
-        match = pattern.match(url)
+        match = pattern.fullmatch(url)
 
         if match:
             return Video(host=host, id=match.group(1))

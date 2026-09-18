@@ -179,6 +179,27 @@ def test_keywords_are_not_checked_against_the_taxonomy():
     assert parsed.keywords == ("plug-in gait",)
 
 
+def test_supervisors_must_be_a_list():
+    with pytest.raises(BadValue, match="supervisors"):
+        entry.from_dict("2027-x", MINIMAL | {"supervisors": "Rodrigo"})
+
+
+def test_supervisors_must_be_non_empty_strings():
+    with pytest.raises(BadValue, match="supervisors"):
+        entry.from_dict("2027-x", MINIMAL | {"supervisors": ["ok", " "]})
+
+
+def test_supervisors_may_be_an_empty_list():
+    # Derived from \supervisor: a thesis with none is not a schema error.
+    parsed = entry.from_dict("2027-x", MINIMAL | {"supervisors": []})
+
+    assert parsed.supervisors == ()
+
+
+def test_absent_supervisors_is_fine():
+    assert entry.from_dict("2027-x", MINIMAL).supervisors == ()
+
+
 def test_a_zero_score_survives_the_round_trip():
     data = MINIMAL | {"score": 0}
 
@@ -286,6 +307,7 @@ def test_video_accepts_each_allowed_form(url, host, id):
     "https://vimeo.com/not-a-number",
     "https://www.youtube.com/watch?v=",
     "dQw4w9WgXcQ",
+    SHORT_URL + "\n",
 ])
 def test_video_rejects_anything_else(url):
     with pytest.raises(BadValue, match="video"):
