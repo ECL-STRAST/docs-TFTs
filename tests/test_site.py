@@ -270,3 +270,27 @@ def test_stylesheet_defines_the_ecl_palette(repo):
     for token in ["--ecl-blue: #046ba5", "--ecl-navy: #093d76",
                   "--ecl-teal: #218880", "--ecl-green: #1a6c46"]:
         assert token in css
+
+
+def test_image_is_copied_next_to_the_page(repo):
+    folder = _entry(repo, "2027-x", FULL | {"image": "cover.png"})
+    (folder / "cover.png").write_bytes(b"\x89PNG\r\n")
+
+    out = _build(repo)
+
+    assert (out / "entries" / "2027-x" / "cover.png").is_file()
+
+
+def test_a_declared_image_missing_from_disk_fails_the_build(repo):
+    folder = _entry(repo, "2027-x", FULL | {"image": "cover.png"})
+    (folder / "cover.png").write_bytes(b"\x89PNG\r\n")
+    out = _build(repo)
+    (out / "sentinel.html").write_text("kept")
+
+    # The metadata still declares the image, but the file behind it is gone.
+    (folder / "cover.png").unlink()
+
+    with pytest.raises(BadValue, match="2027-x.*cover.png"):
+        _build(repo)
+
+    assert (out / "sentinel.html").read_text() == "kept"

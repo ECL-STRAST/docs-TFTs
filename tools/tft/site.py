@@ -91,6 +91,9 @@ class Site:
             if entry.photo:
                 self._require(source, entry.photo, entry.slug)
 
+            if entry.image:
+                self._require(source, entry.image, entry.slug)
+
     def _require(self, source: Path, name: str, slug: str) -> None:
         if not store.exists(source / name):
             raise BadValue(f"{slug}: missing {name}")
@@ -122,6 +125,9 @@ class Site:
 
         if entry.photo:
             shutil.copyfile(source / entry.photo, folder / entry.photo)
+
+        if entry.image:
+            shutil.copyfile(source / entry.image, folder / entry.image)
 
         page = self._jinja.get_template("entry.html").render(
             entry=entry, doc=doc, summary=markdown.markdown(entry.summary),

@@ -181,3 +181,16 @@ def test_present_photo_is_no_problem(repo):
     (folder / "photo.jpg").write_bytes(b"\xff\xd8\xff")
 
     assert _catalog(repo).problems() == []
+
+
+def test_declared_image_must_exist(repo):
+    _add(repo, "2027-x", data=MINIMAL | {"image": "cover.png"})
+
+    assert any("cover.png" in p for p in _catalog(repo).problems())
+
+
+def test_present_image_is_no_problem(repo):
+    folder = _add(repo, "2027-x", data=MINIMAL | {"image": "cover.png"})
+    (folder / "cover.png").write_bytes(b"\x89PNG\r\n")
+
+    assert _catalog(repo).problems() == []
