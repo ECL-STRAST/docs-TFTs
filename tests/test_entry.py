@@ -350,6 +350,16 @@ def test_absent_author_links_are_none():
     assert parsed.author_linkedin is None
 
 
+def test_author_links_accept_a_trailing_slash():
+    # What a browser's address bar actually shows when you copy a profile URL.
+    data = MINIMAL | {"author_github": GITHUB_URL + "/", "author_linkedin": LINKEDIN_URL + "/"}
+
+    parsed = entry.from_dict("2027-x", data)
+
+    assert parsed.author_github == GITHUB_URL + "/"
+    assert parsed.author_linkedin == LINKEDIN_URL + "/"
+
+
 @pytest.mark.parametrize("url", [
     "https://gitlab.com/bgomezm",
     "http://github.com/bgomezm",

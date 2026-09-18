@@ -30,8 +30,8 @@ EMBED = {
 }
 
 # The author's own profile, not a repo or company page.
-GITHUB_URL = re.compile(r"https://github\.com/[A-Za-z0-9-]+")
-LINKEDIN_URL = re.compile(r"https://(?:www\.)?linkedin\.com/in/[A-Za-z0-9_%-]+")
+GITHUB_URL = re.compile(r"https://github\.com/[A-Za-z0-9-]+/?")
+LINKEDIN_URL = re.compile(r"https://(?:www\.)?linkedin\.com/in/[A-Za-z0-9_%-]+/?")
 
 DOC_NAME = {THESIS: "thesis.pdf", PUBLICATION: "paper.pdf"}
 
